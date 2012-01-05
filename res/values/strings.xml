@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="hello">Hello World, MainActivity!</string>
+    <string name="app_name">FileSender</string>
+    <string name="select_folder">Select the folder!</string>
+    <string name="ok">ok</string>
+    <string name="content_descr">img</string>
+    <string name="empty_list">No Files in here. Strange!</string>
+    <string name="cancel">cancel</string>
+    <string name="paths">Paths</string>
+    <string name="empty">empty</string>
+    <string name="current_activity">Current Service activity</string>
+
+</resources>
