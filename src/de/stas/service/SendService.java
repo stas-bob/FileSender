@@ -1,7 +1,9 @@
 package de.stas.service;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -16,6 +18,7 @@ import java.util.Set;
 
 import android.app.Service;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.IBinder;
 import android.os.RemoteException;
 import de.stas.db.DBWrapper;
@@ -37,7 +40,8 @@ public class SendService extends Service {
 	private static final int NEW_LINE = 6;
 	private static final int NEW = 7;
 	private static final int PROGRESS = 8;
-	private static final String SERVER = "192.168.178.1";
+	private static final String SERVER = "bline.dynalias.org";
+	private String password = "";
 
 	
 	@Override
@@ -83,6 +87,15 @@ public class SendService extends Service {
 	@Override
 	public void onCreate() {
 		super.onCreate();
+		try {
+			File dir = getDir("myDir", MODE_PRIVATE);
+			File myFile = new File(dir, "password");
+			BufferedReader fr = new BufferedReader(new FileReader(myFile));
+			password = fr.readLine();
+			System.out.println(password);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		clients = new HashMap<String, ClientINTF>();
 		dbWrapper = new DBWrapper(getApplicationContext());
 		
@@ -169,8 +182,8 @@ public class SendService extends Service {
 	@Override
 	public IBinder onBind(Intent intent) {
 		return new ServiceINTF.Stub() {
-			
-			public boolean register(String appName, ClientINTF clientIntf) throws RemoteException {
+			private boolean running;
+			synchronized public boolean register(String appName, ClientINTF clientIntf) throws RemoteException {
 				clients.put(appName, clientIntf);
 				System.out.println(appName + " registered");
 				return true;
@@ -186,7 +199,9 @@ public class SendService extends Service {
 			}
 
 			@Override
-			public void deleteRemoteFiles() throws RemoteException {
+			synchronized public void deleteRemoteFiles() throws RemoteException {
+				if(!running) {
+					running = true;
 					new Thread() {
 						@Override
 						public void run() {
@@ -195,6 +210,7 @@ public class SendService extends Service {
 								answerClient("new", NEW);
 								Socket s = new Socket();
 								s.connect(sa);
+								sendSynced(s, password.getBytes(), STRING);
 								sendSynced(s, getIntBytes(RM_FILES), INTEGER);
 								answerClient(new String(receive(s)), NEW_LINE);
 								sendSynced(s, getIntBytes(BEGIN_RM), INTEGER);
@@ -210,10 +226,11 @@ public class SendService extends Service {
 						}
 						
 					}.start();
+				}
 			}
 
 			@Override
-			public void unregister(String appName) throws RemoteException {
+			synchronized public void unregister(String appName) throws RemoteException {
 				if (clients.size() == 0) {
 					System.out.println(appName + " unregisters but is not registered!");
 				} else {
@@ -232,6 +249,7 @@ public class SendService extends Service {
 							answerClient("new", NEW);
 							Socket s = new Socket();
 							s.connect(sa);
+							sendSynced(s, password.getBytes(), STRING);
 							sendSynced(s, getIntBytes(GET_DISK_SPACE), INTEGER);
 							answerClient(new String(receive(s)) + " mb", NEW_LINE);
 						} catch (Exception e) {
@@ -262,6 +280,9 @@ public class SendService extends Service {
 		@Override
 		public void run() {
 			sa = new InetSocketAddress(SERVER, 8081);
+			SharedPreferences.Editor editor = getSharedPreferences("debug2", MODE_WORLD_WRITEABLE | MODE_WORLD_READABLE).edit();
+			editor.putString("info", "started");
+			editor.commit();
 			while (true) {
 				Socket s = new Socket();
 				secondsToWait = 5*60*60;
@@ -275,6 +296,7 @@ public class SendService extends Service {
 					answerClient("new", NEW);
 					dbWrapper.removeDirtyFilePaths();
 					s.connect(sa);
+					sendSynced(s, password.getBytes(), STRING);
 					sendSynced(s, getIntBytes(SAVE_FILES), INTEGER);
 					List<Path> paths = dbWrapper.getPaths();
 					sendSynced(s, getIntBytes(paths.size()), INTEGER);
@@ -313,6 +335,9 @@ public class SendService extends Service {
 					} catch (RemoteException e1) {
 						e1.printStackTrace();
 					}
+					editor = getSharedPreferences("debug2", MODE_WORLD_WRITEABLE | MODE_WORLD_READABLE).edit();
+					editor.putString("error", e.getMessage());
+					editor.commit();
 					e.printStackTrace();
 				} finally {
 					try {

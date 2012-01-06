@@ -48,6 +48,7 @@ void *receive(int cd) {
 	if ((type & STRING) == STRING) {
 		int length = 0;
 		recv(cd, &length, sizeof(int), 0);
+		if (length > 200) return 0;
 		printf("string length %d\n", length);
 		void *mem = malloc(length + 1);
 		if (mem == 0) {
@@ -282,6 +283,7 @@ void getDiskSpace(int cd, char *usbPath) {
 	}
 }
 
+
 int main(int argc, char **argv) {
     char *usbPath;
     if (argc == 2) {
@@ -336,20 +338,31 @@ int main(int argc, char **argv) {
            errorHandle("accept() failed\0");
         } else {
             if (fork() == 0) {
-		int *iPtr = (int *)receive(clientdescriptor);
-		if (iPtr != 0) {
-			char *msg = "command received\0";
+		char *password = (char *)receive(clientdescriptor);
+		char pw[16];
+		FILE *pFile = fopen("password", "r");
+		fgets(pw, 16, pFile);
+		printf("%s\n", pw);
+		if (pFile != 0 && strcmp(pw, password) == 0) {
+			char *msg = "authorized\0";
 			sendNotSynced(clientdescriptor, msg, strlen(msg), STRING);
-			int command = *iPtr;
-			free(iPtr);
-			switch (command) {
-				case SAVE_FILES: saveFiles(clientdescriptor, usbPath); break;
-				case RM_FILES: rmFiles(clientdescriptor, usbPath); break;
-				case GET_DISK_SPACE: getDiskSpace(clientdescriptor, usbPath); break;
-				default: break;
+			int *iPtr = (int *)receive(clientdescriptor);
+			if (iPtr != 0) {
+				char *msg = "command received\0";
+				sendNotSynced(clientdescriptor, msg, strlen(msg), STRING);
+				int command = *iPtr;
+				free(iPtr);
+				switch (command) {
+					case SAVE_FILES: saveFiles(clientdescriptor, usbPath); break;
+					case RM_FILES: rmFiles(clientdescriptor, usbPath); break;
+					case GET_DISK_SPACE: getDiskSpace(clientdescriptor, usbPath); break;
+					default: break;
+				}
+			} else {
+				errorHandleSend(clientdescriptor, "command ptr is null\0");		
 			}
 		} else {
-			errorHandleSend(clientdescriptor, "command ptr is null\0");		
+			errorHandleSend(clientdescriptor, "error @ password\0");
 		}
 		close(clientdescriptor);
                 exit(EXIT_SUCCESS);

@@ -40,14 +40,18 @@
 		    android:label="@string/app_name"
 			android:icon="@drawable/ic_launcher">
 			<intent-filter>
-				<action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+			    <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+			    <action android:name="android.appwidget.action.APPWIDGET_ENABLED" />
+			    <action android:name="android.appwidget.action.APPWIDGET_DELETED" />
+			    <action android:name="android.appwidget.action.APPWIDGET_DISABLED" />
+			    <action android:name="de.stas.broadcast.AppWidgetRecv_ALARM" />
 			</intent-filter>
 			<meta-data
 			    android:name="android.appwidget.provider"
 				android:resource="@xml/widget_provider"/>
 		</receiver>
         <service android:name="de.stas.service.WidgetUpdateService"
-            android:process=":WidgetService"> 
+            android:process=":WidgetUpdateService"> 
        	</service>
     </application>
 
