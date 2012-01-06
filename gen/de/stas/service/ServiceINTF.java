@@ -47,7 +47,9 @@ case TRANSACTION_register:
 data.enforceInterface(DESCRIPTOR);
 java.lang.String _arg0;
 _arg0 = data.readString();
-boolean _result = this.register(_arg0);
+de.stas.service.ClientINTF _arg1;
+_arg1 = de.stas.service.ClientINTF.Stub.asInterface(data.readStrongBinder());
+boolean _result = this.register(_arg0, _arg1);
 reply.writeNoException();
 reply.writeInt(((_result)?(1):(0)));
 return true;
@@ -55,7 +57,9 @@ return true;
 case TRANSACTION_unregister:
 {
 data.enforceInterface(DESCRIPTOR);
-this.unregister();
+java.lang.String _arg0;
+_arg0 = data.readString();
+this.unregister(_arg0);
 reply.writeNoException();
 return true;
 }
@@ -106,7 +110,7 @@ public java.lang.String getInterfaceDescriptor()
 {
 return DESCRIPTOR;
 }
-public boolean register(java.lang.String appName) throws android.os.RemoteException
+public boolean register(java.lang.String appName, de.stas.service.ClientINTF clientIntf) throws android.os.RemoteException
 {
 android.os.Parcel _data = android.os.Parcel.obtain();
 android.os.Parcel _reply = android.os.Parcel.obtain();
@@ -114,6 +118,7 @@ boolean _result;
 try {
 _data.writeInterfaceToken(DESCRIPTOR);
 _data.writeString(appName);
+_data.writeStrongBinder((((clientIntf!=null))?(clientIntf.asBinder()):(null)));
 mRemote.transact(Stub.TRANSACTION_register, _data, _reply, 0);
 _reply.readException();
 _result = (0!=_reply.readInt());
@@ -124,12 +129,13 @@ _data.recycle();
 }
 return _result;
 }
-public void unregister() throws android.os.RemoteException
+public void unregister(java.lang.String appName) throws android.os.RemoteException
 {
 android.os.Parcel _data = android.os.Parcel.obtain();
 android.os.Parcel _reply = android.os.Parcel.obtain();
 try {
 _data.writeInterfaceToken(DESCRIPTOR);
+_data.writeString(appName);
 mRemote.transact(Stub.TRANSACTION_unregister, _data, _reply, 0);
 _reply.readException();
 }
@@ -205,8 +211,8 @@ static final int TRANSACTION_scanNow = (android.os.IBinder.FIRST_CALL_TRANSACTIO
 static final int TRANSACTION_deleteRemoteFiles = (android.os.IBinder.FIRST_CALL_TRANSACTION + 4);
 static final int TRANSACTION_getRemoteFreeSpace = (android.os.IBinder.FIRST_CALL_TRANSACTION + 5);
 }
-public boolean register(java.lang.String appName) throws android.os.RemoteException;
-public void unregister() throws android.os.RemoteException;
+public boolean register(java.lang.String appName, de.stas.service.ClientINTF clientIntf) throws android.os.RemoteException;
+public void unregister(java.lang.String appName) throws android.os.RemoteException;
 public int getTimeTillNextScan() throws android.os.RemoteException;
 public void scanNow() throws android.os.RemoteException;
 public void deleteRemoteFiles() throws android.os.RemoteException;

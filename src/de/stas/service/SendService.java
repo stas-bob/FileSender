@@ -10,18 +10,19 @@ import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.HashMap;
 import java.util.List;
-
-import de.stas.db.DBWrapper;
-import de.stas.db.content.Path;
+import java.util.Set;
 
 import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
 import android.os.RemoteException;
+import de.stas.db.DBWrapper;
+import de.stas.db.content.Path;
 
 public class SendService extends Service {
-	private String client;
+	private HashMap<String, ClientINTF> clients;
 	private DBWrapper dbWrapper;
 	private SocketAddress sa;
 	private SendThread st;
@@ -33,6 +34,9 @@ public class SendService extends Service {
 	private static final int ERROR = 3;
 	private static final int INTEGER = 0;
 	private static final int GET_DISK_SPACE = 5;
+	private static final int NEW_LINE = 6;
+	private static final int NEW = 7;
+	private static final int PROGRESS = 8;
 	private static final String SERVER = "192.168.178.1";
 
 	
@@ -48,16 +52,15 @@ public class SendService extends Service {
 		System.exit(0);
 	}
 	
-	public void answerClient(String msg, boolean error) {
-		if (client != null) {
-			Intent i = new Intent(client);
-			i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-			if (error) {
-				i.putExtra("error", msg);
-			} else {
-				i.putExtra("string", msg);
+	public void answerClient(String msg, int type) throws RemoteException {
+		Set<String> appNames = clients.keySet();
+		for (String appName : appNames) {
+			switch (type) {
+			case ERROR: clients.get(appName).error(msg); break;
+			case NEW_LINE: clients.get(appName).newLine(msg); break;
+			case NEW: clients.get(appName).newMessages(); break;
+			case PROGRESS: clients.get(appName).progress(msg); break;
 			}
-			startActivity(i);
 		}
 	}
 	
@@ -80,6 +83,7 @@ public class SendService extends Service {
 	@Override
 	public void onCreate() {
 		super.onCreate();
+		clients = new HashMap<String, ClientINTF>();
 		dbWrapper = new DBWrapper(getApplicationContext());
 		
 		st = new SendThread();
@@ -107,7 +111,7 @@ public class SendService extends Service {
 			s.getOutputStream().write(toLittleEndian(i));
 		}
 		String msg = new String(receive(s));
-		answerClient(msg, false);
+		answerClient(msg, NEW_LINE);
 	}
 	
 	public byte[] toLittleEndian(int i) {
@@ -166,9 +170,9 @@ public class SendService extends Service {
 	public IBinder onBind(Intent intent) {
 		return new ServiceINTF.Stub() {
 			
-			public boolean register(String appName) throws RemoteException {
-				client = appName;
-				System.out.println(client + " registered");
+			public boolean register(String appName, ClientINTF clientIntf) throws RemoteException {
+				clients.put(appName, clientIntf);
+				System.out.println(appName + " registered");
 				return true;
 			}
 			
@@ -188,15 +192,19 @@ public class SendService extends Service {
 						public void run() {
 							sa = new InetSocketAddress(SERVER, 8081);
 							try {
-								answerClient("new", false);
+								answerClient("new", NEW);
 								Socket s = new Socket();
 								s.connect(sa);
 								sendSynced(s, getIntBytes(RM_FILES), INTEGER);
-								answerClient(new String(receive(s)), false);
+								answerClient(new String(receive(s)), NEW_LINE);
 								sendSynced(s, getIntBytes(BEGIN_RM), INTEGER);
-								answerClient(new String(receive(s)), false);
+								answerClient(new String(receive(s)), NEW_LINE);
 							} catch (Exception e) {
-								answerClient(e.getMessage(), true);
+								try {
+									answerClient(e.getMessage(), ERROR);
+								} catch (RemoteException e1) {
+									e1.printStackTrace();
+								}
 								e.printStackTrace();
 							}
 						}
@@ -205,9 +213,13 @@ public class SendService extends Service {
 			}
 
 			@Override
-			public void unregister() throws RemoteException {
-				System.out.println(client + " unregistered");
-				client = null;
+			public void unregister(String appName) throws RemoteException {
+				if (clients.size() == 0) {
+					System.out.println(appName + " unregisters but is not registered!");
+				} else {
+					System.out.println(appName + " unregistered");
+					clients.remove(appName);
+				}
 			}
 
 			@Override
@@ -217,19 +229,22 @@ public class SendService extends Service {
 					public void run() {
 						sa = new InetSocketAddress(SERVER, 8081);
 						try {
-							answerClient("new", false);
+							answerClient("new", NEW);
 							Socket s = new Socket();
 							s.connect(sa);
 							sendSynced(s, getIntBytes(GET_DISK_SPACE), INTEGER);
-							answerClient(new String(receive(s)) + " mb", false);
+							answerClient(new String(receive(s)) + " mb", NEW_LINE);
 						} catch (Exception e) {
-							answerClient(e.getMessage(), true);
+							try {
+								answerClient(e.getMessage(), ERROR);
+							} catch (RemoteException e1) {
+								e1.printStackTrace();
+							}
 							e.printStackTrace();
 						}
 					}
 				}.start();
 			}
-
 		};
 	}
 
@@ -257,7 +272,7 @@ public class SendService extends Service {
 							wait(1000);
 						}
 					}
-					answerClient("new", false);
+					answerClient("new", NEW);
 					dbWrapper.removeDirtyFilePaths();
 					s.connect(sa);
 					sendSynced(s, getIntBytes(SAVE_FILES), INTEGER);
@@ -270,12 +285,12 @@ public class SendService extends Service {
 						files = dbWrapper.filterNewFiles(files);
 			            sendSynced(s, getIntBytes(files.length), INTEGER);
 						for (File file : files) {
-							answerClient("proceeding file " + file.getName(), false);
+							answerClient("proceeding file " + file.getName(), NEW_LINE);
 				            byte[] bytes;
 				            try {
 				            	bytes = getBytesFromFile(file);
 				            } catch(Exception e) {
-				            	answerClient(e.getMessage(), true);
+				            	answerClient(e.getMessage(), ERROR);
 				            	sendSynced(s, e.getMessage().getBytes(), ERROR);
 				            	dbWrapper.addNewFile(file, path);
 				            	scanProgress++;
@@ -286,14 +301,18 @@ public class SendService extends Service {
 				            sendSynced(s, getIntBytes(bytes.length), INTEGER);
 				            sendSynced(s, getIntBytes(BEGIN_DATA), INTEGER);
 				            sendData(s.getOutputStream(), bytes);
-				            answerClient(new String(receive(s)), false);
+				            answerClient(new String(receive(s)), NEW_LINE);
 				            dbWrapper.addNewFile(file, path);
 				            scanProgress++;
-				            answerClient("scanProgress: Folder: " + path.getPath() + " " + 100*scanProgress/files.length, false);
+				            answerClient("scanProgress: Folder: " + path.getPath() + " " + 100*scanProgress/files.length, PROGRESS);
 						}
 					}
 				} catch (Exception e) {
-					answerClient(e.getMessage(), true);
+					try {
+						answerClient(e.getMessage(), ERROR);
+					} catch (RemoteException e1) {
+						e1.printStackTrace();
+					}
 					e.printStackTrace();
 				} finally {
 					try {

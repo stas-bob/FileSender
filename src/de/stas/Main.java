@@ -21,6 +21,7 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 import de.stas.db.content.Path;
+import de.stas.service.ClientINTF;
 import de.stas.service.ServiceINTF;
 
 public class Main extends BaseActivity implements ServiceConnection, OnItemClickListener {
@@ -28,6 +29,7 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 	private ServiceINTF service;
 	private TextView timer;
 	private TextView progress;
+	private Callback callback;
 	
 	@Override
 	public void onCreate(Bundle b) {
@@ -49,31 +51,7 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 			warningDialog.setText(e.getMessage());
 			e.printStackTrace();
 		}
-	}
-	
-	@Override
-	public void onNewIntent(Intent i) {
-		String str;
-		if ((str = i.getStringExtra("string")) != null) {
-			if (str.equals("new")) {
-				((MsgsArrayAdapter)msgsListView.getAdapter()).clear();
-				progress.setText("");
-			} else {
-				if (str.startsWith("scanProgress")) {
-						progress.setText(str.substring(str.indexOf(' ') + 1) + " %");
-				} else {
-					((MsgsArrayAdapter)msgsListView.getAdapter()).add(str);
-				}
-			}
-			((MsgsArrayAdapter)msgsListView.getAdapter()).notifyDataSetChanged();
-			msgsListView.setSelection(((MsgsArrayAdapter)msgsListView.getAdapter()).getCount());
-
-		} else {
-			if ((str = i.getStringExtra("error")) != null) {
-				warningDialog.setText(str);
-				showDialog(WARNING_DIALOG);
-			}
-		}
+		callback = new Callback();
 	}
 	
 	class PathsArrayAdapter extends ArrayAdapter<Path> {
@@ -246,7 +224,7 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 			public void run() {
 				while (service == null);
 				try {
-					if(!service.register(getComponentName().getClassName())) {
+					if(!service.register(getComponentName().getClassName(), callback)) {
 						throw new RuntimeException("could not bind service");
 					}
 					while(!interrupted) {
@@ -291,7 +269,7 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 		super.onStop();
 		try {
 			if (service != null) {
-				service.unregister();
+				service.unregister(getComponentName().getClassName());
 				unbindService(this);
 			}
 		} catch(Exception e) {}
@@ -320,6 +298,75 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 			});
 			showDialog(CONFIRM_DIALOG);
 		}
+	}
+	
+	private class Callback extends ClientINTF.Stub {
+
+		@Override
+		public void newMessages() throws RemoteException {
+			try {
+				runOnUiThread(new Runnable() {
+					@Override
+					public void run() {
+						((MsgsArrayAdapter)msgsListView.getAdapter()).clear();
+						progress.setText("");
+						changed();
+					}
+				});
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+
+		@Override
+		public void newLine(final String line) throws RemoteException {
+			try {
+				runOnUiThread(new Runnable() {
+					@Override
+					public void run() {
+						((MsgsArrayAdapter)msgsListView.getAdapter()).add(line);
+						changed();
+					}
+				});
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+
+		@Override
+		public void error(final String errMsg) throws RemoteException {
+			try {
+				runOnUiThread(new Runnable() {
+					@Override
+					public void run() {
+						warningDialog.setText(errMsg);
+						showDialog(WARNING_DIALOG);
+					}
+				});
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+
+		@Override
+		public void progress(final String str) throws RemoteException {
+			try {
+				runOnUiThread(new Runnable() {
+					@Override
+					public void run() {
+						progress.setText(str.substring(str.indexOf(' ') + 1) + " %");
+					}
+				});
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
+		private void changed() {
+			((MsgsArrayAdapter)msgsListView.getAdapter()).notifyDataSetChanged();
+			msgsListView.setSelection(((MsgsArrayAdapter)msgsListView.getAdapter()).getCount());
+		}
+		
 	}
 	
 }
