@@ -18,6 +18,7 @@
 	    android:id="@+id/path_emptyView_textView"
         android:layout_height="wrap_content"
         android:layout_width="wrap_content"
+        android:textColor="@color/red"
         android:text="@string/empty"/>
     <TextView
         android:id="@+id/cur_act_text_textView"
@@ -33,6 +34,7 @@
 	    android:id="@+id/cur_act_emptyView_textView"
         android:layout_height="wrap_content"
         android:layout_width="wrap_content"
+        android:textColor="@color/red"
         android:text="@string/empty"/>
 	<TextView
 	    android:id="@+id/progress_textView"

@@ -18,6 +18,7 @@
         android:layout_height="wrap_content"
         android:layout_width="wrap_content"
         android:text="@string/empty"
+        android:textColor="@color/red"
         android:layout_below="@id/path_text_textView"/>
     <TextView
        	android:id="@+id/cur_act_text_textView"
@@ -37,6 +38,7 @@
         android:layout_height="wrap_content"
         android:layout_width="wrap_content"
         android:text="@string/empty"
+        android:textColor="@color/red"
      	android:layout_alignParentRight="true"
 		android:layout_below="@id/cur_act_text_textView"/>
 	<TextView

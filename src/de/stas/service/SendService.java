@@ -182,7 +182,9 @@ public class SendService extends Service {
 	@Override
 	public IBinder onBind(Intent intent) {
 		return new ServiceINTF.Stub() {
-			private boolean running;
+			private boolean runningDelete;
+			private boolean runningFreeSpace;
+			
 			synchronized public boolean register(String appName, ClientINTF clientIntf) throws RemoteException {
 				clients.put(appName, clientIntf);
 				System.out.println(appName + " registered");
@@ -199,34 +201,39 @@ public class SendService extends Service {
 			}
 
 			@Override
-			synchronized public void deleteRemoteFiles() throws RemoteException {
-				if(!running) {
-					running = true;
-					new Thread() {
-						@Override
-						public void run() {
-							sa = new InetSocketAddress(SERVER, 8081);
-							try {
-								answerClient("new", NEW);
-								Socket s = new Socket();
-								s.connect(sa);
-								sendSynced(s, password.getBytes(), STRING);
-								sendSynced(s, getIntBytes(RM_FILES), INTEGER);
-								answerClient(new String(receive(s)), NEW_LINE);
-								sendSynced(s, getIntBytes(BEGIN_RM), INTEGER);
-								answerClient(new String(receive(s)), NEW_LINE);
-							} catch (Exception e) {
-								try {
-									answerClient(e.getMessage(), ERROR);
-								} catch (RemoteException e1) {
-									e1.printStackTrace();
-								}
-								e.printStackTrace();
-							}
-						}
-						
-					}.start();
+			public void deleteRemoteFiles() throws RemoteException {
+				synchronized (this) {
+					if(runningDelete) {
+						return;
+					} else {
+						runningDelete = true;
+					}
 				}
+				new Thread() {
+					@Override
+					public void run() {
+						sa = new InetSocketAddress(SERVER, 8081);
+						try {
+							answerClient("new", NEW);
+							Socket s = new Socket();
+							s.connect(sa);
+							sendSynced(s, password.getBytes(), STRING);
+							sendSynced(s, getIntBytes(RM_FILES), INTEGER);
+							answerClient(new String(receive(s)), NEW_LINE);
+							sendSynced(s, getIntBytes(BEGIN_RM), INTEGER);
+							answerClient(new String(receive(s)), NEW_LINE);
+						} catch (Exception e) {
+							try {
+								answerClient(e.getMessage(), ERROR);
+							} catch (RemoteException e1) {
+								e1.printStackTrace();
+							}
+							e.printStackTrace();
+						}
+						runningDelete = false;
+					}
+					
+				}.start();
 			}
 
 			@Override
@@ -241,6 +248,13 @@ public class SendService extends Service {
 
 			@Override
 			public void getRemoteFreeSpace() throws RemoteException {
+				synchronized (this) {
+					if(runningFreeSpace) {
+						return;
+					} else {
+						runningFreeSpace = true;
+					}
+				}
 				new Thread() {
 					@Override
 					public void run() {
@@ -260,6 +274,7 @@ public class SendService extends Service {
 							}
 							e.printStackTrace();
 						}
+						runningFreeSpace = false;
 					}
 				}.start();
 			}

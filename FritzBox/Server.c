@@ -341,28 +341,32 @@ int main(int argc, char **argv) {
 		char *password = (char *)receive(clientdescriptor);
 		char pw[16];
 		FILE *pFile = fopen("password", "r");
-		fgets(pw, 16, pFile);
-		printf("%s\n", pw);
-		if (pFile != 0 && strcmp(pw, password) == 0) {
-			char *msg = "authorized\0";
-			sendNotSynced(clientdescriptor, msg, strlen(msg), STRING);
-			int *iPtr = (int *)receive(clientdescriptor);
-			if (iPtr != 0) {
-				char *msg = "command received\0";
+		if (pFile == 0) {
+			errorHandleSend(clientdescriptor, "password file not found\0");
+		} else {
+			fgets(pw, 16, pFile);
+			printf("%s\n", pw);
+			if (pFile != 0 && strcmp(pw, password) == 0) {
+				char *msg = "authorized\0";
 				sendNotSynced(clientdescriptor, msg, strlen(msg), STRING);
-				int command = *iPtr;
-				free(iPtr);
-				switch (command) {
-					case SAVE_FILES: saveFiles(clientdescriptor, usbPath); break;
-					case RM_FILES: rmFiles(clientdescriptor, usbPath); break;
-					case GET_DISK_SPACE: getDiskSpace(clientdescriptor, usbPath); break;
-					default: break;
+				int *iPtr = (int *)receive(clientdescriptor);
+				if (iPtr != 0) {
+					char *msg = "command received\0";
+					sendNotSynced(clientdescriptor, msg, strlen(msg), STRING);
+					int command = *iPtr;
+					free(iPtr);
+					switch (command) {
+						case SAVE_FILES: saveFiles(clientdescriptor, usbPath); break;
+						case RM_FILES: rmFiles(clientdescriptor, usbPath); break;
+						case GET_DISK_SPACE: getDiskSpace(clientdescriptor, usbPath); break;
+						default: break;
+					}
+				} else {
+					errorHandleSend(clientdescriptor, "command ptr is null\0");		
 				}
 			} else {
-				errorHandleSend(clientdescriptor, "command ptr is null\0");		
+				errorHandleSend(clientdescriptor, "wrong password\0");
 			}
-		} else {
-			errorHandleSend(clientdescriptor, "error @ password\0");
 		}
 		close(clientdescriptor);
                 exit(EXIT_SUCCESS);
