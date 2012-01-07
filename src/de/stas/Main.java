@@ -48,7 +48,10 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 			pathsListView.setAdapter(new PathsArrayAdapter(this, R.id.path_textView, paths));
 			msgsListView.setAdapter(new MsgsArrayAdapter(this, R.id.msg_textView, msgs));
 		} catch (Exception e) {
+			String className = e.getClass().getName();
+			warningDialog.setTitle(className.substring(className.lastIndexOf('.') + 1));
 			warningDialog.setText(e.getMessage());
+			showDialog(WARNING_DIALOG);
 			e.printStackTrace();
 		}
 		callback = new Callback();
@@ -188,6 +191,8 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 					((PathsArrayAdapter)pathsListView.getAdapter()).notifyDataSetChanged();
 				}
 			} catch (Exception e) {
+				String className = e.getClass().getName();
+				warningDialog.setTitle(className.substring(className.lastIndexOf('.') + 1));
 				warningDialog.setText(e.getMessage());
 				showDialog(WARNING_DIALOG);
 				e.printStackTrace();
@@ -254,6 +259,8 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 					timer.post(new Runnable() {
 						@Override
 						public void run() {
+							String className = e.getClass().getName();
+							warningDialog.setTitle(className.substring(className.lastIndexOf('.') + 1));
 							warningDialog.setText(e.getMessage());
 							showDialog(WARNING_DIALOG);
 							e.printStackTrace();
@@ -284,7 +291,8 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 	public void onItemClick(AdapterView<?> arg0, View arg1, final int arg2, long arg3) {
 		if (arg0 == pathsListView) {
 			final TextView tv = (TextView)arg1.findViewById(R.id.path_textView);
-			confirmDialog.setText("delete that path?");
+			confirmDialog.setTitle("Delete that path?");
+			confirmDialog.setText("All saved files will be removed");
 			confirmDialog.setOkRunnable(new Runnable() {
 
 				@Override
@@ -339,6 +347,7 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 				runOnUiThread(new Runnable() {
 					@Override
 					public void run() {
+						warningDialog.setTitle("Error received");
 						warningDialog.setText(errMsg);
 						showDialog(WARNING_DIALOG);
 					}

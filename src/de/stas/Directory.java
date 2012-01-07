@@ -39,40 +39,22 @@ public class Directory extends BaseActivity implements OnItemClickListener, OnCl
         list.setOnItemClickListener(this);
         colorButton = (ColorButton)findViewById(R.id.header_ok_button);
         colorButton.setOnClickListener(this);
+        
         infoDialog.setOkRunnable(new Runnable() {
         	@Override
         	public void run() {
-        		try {
-        			Intent intent = new Intent();
-        			intent.putExtra("path", currentRoot.getAbsolutePath());
-					setResult(RESULT_OK, intent);
-					finish();
-				} catch (Exception e) {
-			        warningDialog.setOkRunnable(new Runnable() {
-
-						@Override
-						public void run() {
-							setResult(RESULT_CANCELED);
-							finish();
-						}
-			        	
-			        });
-					warningDialog.setText(e.getMessage());
-					showDialog(WARNING_DIALOG);
-					e.printStackTrace();
-				}
+    			Intent intent = new Intent();
+    			intent.putExtra("path", currentRoot.getAbsolutePath());
+				setResult(RESULT_OK, intent);
+				finish();
+				
         	}
         });
         savePath = new Runnable() {
         	public void run() {
-        		try {
-        			infoDialog.setText("folder set");
-        			showDialog(INFO_DIALOG);
-        		} catch (Exception e) {
-        			warningDialog.setText(e.getMessage());
-        			showDialog(WARNING_DIALOG);
-        			e.printStackTrace();
-        		}
+        		infoDialog.setTitle("Infomation");
+    			infoDialog.setText("folder set");
+    			showDialog(INFO_DIALOG);
         	}
         };
         confirmDialog.setOkRunnable(savePath);
@@ -203,6 +185,7 @@ public class Directory extends BaseActivity implements OnItemClickListener, OnCl
 			if (colorButton.isHighlighted()) {
 				savePath.run();
 			} else {
+				confirmDialog.setTitle("No files found");
 				confirmDialog.setText("This folder contains no files.\n" +
 						"Use is it anyway?");
 				showDialog(CONFIRM_DIALOG);

@@ -14,6 +14,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <time.h>
 
 
 #define true 1
@@ -44,12 +45,12 @@ typedef struct {
 void *receive(int cd) {	
 	int type = INTEGER;
 	recv(cd, &type, sizeof(int), 0);
-	printf("type %d\n", type);
+	//printf("type %d\n", type);
 	if ((type & STRING) == STRING) {
 		int length = 0;
 		recv(cd, &length, sizeof(int), 0);
 		if (length > 200) return 0;
-		printf("string length %d\n", length);
+		//printf("string length %d\n", length);
 		void *mem = malloc(length + 1);
 		if (mem == 0) {
 			return 0;		
@@ -61,7 +62,7 @@ void *receive(int cd) {
 		if ((type & ERROR) == ERROR) {
 			printf("%s\n", (char *)mem);
 			free(mem);
-			return -1;		
+			return (void *)-1;		
 		} else {
 			return mem;		
 		}
@@ -144,7 +145,7 @@ void saveFiles(int clientdescriptor, char *usbPath) {
 				errorHandleSend(clientdescriptor, "filename ptr is null\0");
 				return;		
 			} else {
-				if (cPtr == -1) {
+				if (cPtr == (void*)-1) {
 					sendNotSynced(clientdescriptor, "ok\0", 2, STRING);
 					continue;				
 				}
@@ -160,7 +161,7 @@ void saveFiles(int clientdescriptor, char *usbPath) {
 				errorHandleSend(clientdescriptor, "filelength ptr is null\0");
 				return;		
 			} else {
-				if (iPtr == -1) {
+				if (iPtr == (void*)-1) {
 					sendNotSynced(clientdescriptor, "ok\0", 2, STRING);
 					return;
 				} else {
@@ -182,7 +183,7 @@ void saveFiles(int clientdescriptor, char *usbPath) {
 					fclose(pFile);
 					return;
 				} else {
-					if (iPtr == -1) {
+					if (iPtr == (void*)-1) {
 						sendNotSynced(clientdescriptor, "ok\0", 2, STRING);
 						return;						
 					} else {
@@ -338,6 +339,9 @@ int main(int argc, char **argv) {
            errorHandle("accept() failed\0");
         } else {
             if (fork() == 0) {
+		time_t rawtime;
+  		time (&rawtime);
+		printf("incoming connection from %s at %s", inet_ntoa(clientSocket.sin_addr), ctime(&rawtime));
 		char *password = (char *)receive(clientdescriptor);
 		char pw[16];
 		FILE *pFile = fopen("password", "r");
@@ -345,8 +349,8 @@ int main(int argc, char **argv) {
 			errorHandleSend(clientdescriptor, "password file not found\0");
 		} else {
 			fgets(pw, 16, pFile);
-			printf("%s\n", pw);
 			if (pFile != 0 && strcmp(pw, password) == 0) {
+				printf("authorized with password: %s\n", password); 
 				char *msg = "authorized\0";
 				sendNotSynced(clientdescriptor, msg, strlen(msg), STRING);
 				int *iPtr = (int *)receive(clientdescriptor);

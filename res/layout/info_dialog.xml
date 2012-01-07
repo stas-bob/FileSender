@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="vertical"
+    android:padding="10dp">
+    <LinearLayout
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content">
+        <ImageView 
+	    	android:id="@+id/dialog_imgView"
+	    	android:layout_width="0px"
+	    	android:layout_weight=".5"
+	    	android:layout_height="70dp"
+	    	android:contentDescription="@string/content_descr"/>
+    	<TextView android:id="@+id/dialog_textView"
+	        android:layout_width="0px"
+	        android:layout_weight="1"
+	        android:layout_height="wrap_content"
+	        android:layout_gravity="center"
+	         android:layout_marginLeft="20dp"
+	        android:textColor="#FFF"/>
+    </LinearLayout>   
+    <Button 
+        android:id="@+id/info_dialog_ok_button"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/ok"/>
+</LinearLayout>
