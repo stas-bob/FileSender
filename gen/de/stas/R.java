@@ -51,27 +51,26 @@ containing a value of this type.
         public static final int widget_shape=0x7f020009;
     }
     public static final class id {
-        public static final int confirm_cancel_dialog_button=0x7f070005;
-        public static final int confirm_ok_dialog_button=0x7f070004;
-        public static final int cur_act_emptyView_textView=0x7f07000e;
-        public static final int cur_act_listView=0x7f07000d;
-        public static final int cur_act_text_textView=0x7f07000c;
-        public static final int dialog_imgView=0x7f070002;
-        public static final int dialog_textView=0x7f070003;
-        public static final int file_imgView=0x7f070000;
-        public static final int file_textView=0x7f070001;
-        public static final int header_imgView=0x7f070006;
-        public static final int header_ok_button=0x7f070007;
-        public static final int info_dialog_ok_button=0x7f070008;
-        public static final int msg_textView=0x7f070011;
-        public static final int path_emptyView_textView=0x7f07000b;
-        public static final int path_listView=0x7f07000a;
-        public static final int path_textView=0x7f070012;
-        public static final int path_text_textView=0x7f070009;
-        public static final int progress_textView=0x7f07000f;
-        public static final int timer_textView=0x7f070010;
-        public static final int widget_layout=0x7f070013;
-        public static final int widget_textView=0x7f070014;
+        public static final int confirm_cancel_dialog_button=0x7f070004;
+        public static final int confirm_ok_dialog_button=0x7f070003;
+        public static final int cur_act_emptyView_textView=0x7f07000d;
+        public static final int cur_act_listView=0x7f07000c;
+        public static final int cur_act_text_textView=0x7f07000b;
+        public static final int dialog_imgView=0x7f070001;
+        public static final int dialog_textView=0x7f070002;
+        public static final int file_textView=0x7f070000;
+        public static final int header_imgView=0x7f070005;
+        public static final int header_ok_button=0x7f070006;
+        public static final int info_dialog_ok_button=0x7f070007;
+        public static final int msg_textView=0x7f070010;
+        public static final int path_emptyView_textView=0x7f07000a;
+        public static final int path_listView=0x7f070009;
+        public static final int path_textView=0x7f070011;
+        public static final int path_text_textView=0x7f070008;
+        public static final int progress_textView=0x7f07000e;
+        public static final int timer_textView=0x7f07000f;
+        public static final int widget_layout=0x7f070012;
+        public static final int widget_textView=0x7f070013;
     }
     public static final class layout {
         public static final int browser_file_list=0x7f030000;

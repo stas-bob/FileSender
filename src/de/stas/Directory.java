@@ -14,7 +14,6 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
-import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -118,47 +117,40 @@ public class Directory extends BaseActivity implements OnItemClickListener, OnCl
 			ViewHolder holder = null;
 			if (convertView == null) {
 				convertView = ((LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE)).inflate(R.layout.browser_file_list, null);
-				holder = new ViewHolder(convertView.findViewById(R.id.file_textView), convertView.findViewById(R.id.file_imgView));
+				holder = new ViewHolder(convertView);
 				convertView.setTag(holder);
 			}
 			holder = (ViewHolder) convertView.getTag();
-			ImageView img = holder.getIcon();
 			if (selectedFile == currentRoot) {
-				img.setImageDrawable(context.getResources().getDrawable(R.drawable.updir));
+				holder.getTextView().setText("\t..");
 			} else {
-				if (selectedFile.isDirectory()) {
-					img.setImageDrawable(context.getResources().getDrawable(R.drawable.folder));
-				} else {
-					if (selectedFile.getName().matches("^.*\\.(([jJ][pP][gG])|([pP][nN][gG]))$")) {
-						img.setImageDrawable(context.getResources().getDrawable(R.drawable.jpg_icon));
-					} else {
-						img.setImageDrawable(context.getResources().getDrawable(R.drawable.file_icon));
-					}
-				}
+				holder.getTextView().setText("\t" + selectedFile.getName());
 			}
 			if (selectedFile == currentRoot) {
-				holder.getFileName().setText("..");
+				holder.getTextView().setCompoundDrawablesWithIntrinsicBounds(context.getResources().getDrawable(R.drawable.updir), null, null, null);
 			} else {
-				holder.getFileName().setText(selectedFile.getName());
+				if (selectedFile.isDirectory()) {
+					holder.getTextView().setCompoundDrawablesWithIntrinsicBounds(context.getResources().getDrawable(R.drawable.folder), null, null, null);
+				} else {
+					if (selectedFile.getName().matches("^.*\\.(([jJ][pP][gG])|([pP][nN][gG]))$")) {
+						holder.getTextView().setCompoundDrawablesWithIntrinsicBounds(context.getResources().getDrawable(R.drawable.jpg_icon), null, null, null);
+					} else {
+						holder.getTextView().setCompoundDrawablesWithIntrinsicBounds(context.getResources().getDrawable(R.drawable.file_icon), null, null, null);
+					}
+				}
 			}
 			return convertView;
 		}
 		
 		private class ViewHolder {
-			private TextView filename;
-			private ImageView icon;
+			private TextView tv;
 			
-			public ViewHolder(View filename, View icon) {
-				this.filename = (TextView)filename;
-				this.icon = (ImageView)icon;
+			public ViewHolder(View filename) {
+				this.tv = (TextView)filename;
 			}
 			
-			public TextView getFileName() {
-				return filename;
-			}
-			
-			public ImageView getIcon() {
-				return icon;
+			public TextView getTextView() {
+				return tv;
 			}
 		}
 	}
