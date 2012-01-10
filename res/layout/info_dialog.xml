@@ -23,6 +23,7 @@
     </LinearLayout>   
     <Button 
         android:id="@+id/info_dialog_ok_button"
+        android:layout_marginBottom="10dp"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:text="@string/ok"/>

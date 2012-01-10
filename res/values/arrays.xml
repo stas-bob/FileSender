@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="timeouts">
+        <item>@string/five_sec</item>
+        <item>10 Sekunden</item>
+        <item>15 Sekunden</item>
+    </string-array>
+   	<string-array name="timeouts_values">
+        <item>5</item>
+        <item>10</item>
+        <item>15</item>
+    </string-array>
+</resources>

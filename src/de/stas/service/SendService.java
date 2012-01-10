@@ -1,9 +1,7 @@
 package de.stas.service;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -15,19 +13,22 @@ import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import android.app.Service;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.preference.PreferenceManager;
+import de.stas.R;
 import de.stas.db.DBWrapper;
 import de.stas.db.content.Path;
 
 public class SendService extends Service {
 	private HashMap<String, ClientINTF> clients;
 	private DBWrapper dbWrapper;
-	private SocketAddress sa;
 	private SendThread st;
 	private static final int SAVE_FILES = 1;
 	private static final int RM_FILES = 2;
@@ -40,8 +41,6 @@ public class SendService extends Service {
 	private static final int NEW_LINE = 6;
 	private static final int NEW = 7;
 	private static final int PROGRESS = 8;
-	private static final String SERVER = "bline.dynalias.org";
-	private String password = "";
 
 	
 	@Override
@@ -87,18 +86,9 @@ public class SendService extends Service {
 	@Override
 	public void onCreate() {
 		super.onCreate();
-		try {
-			File dir = getDir("myDir", MODE_PRIVATE);
-			File myFile = new File(dir, "password");
-			BufferedReader fr = new BufferedReader(new FileReader(myFile));
-			password = fr.readLine();
-			System.out.println(password);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		PreferenceManager.setDefaultValues(this, R.xml.settings, false);
 		clients = new HashMap<String, ClientINTF>();
 		dbWrapper = new DBWrapper(getApplicationContext());
-		
 		st = new SendThread();
 		st.start();
 	}
@@ -212,11 +202,14 @@ public class SendService extends Service {
 				new Thread() {
 					@Override
 					public void run() {
-						sa = new InetSocketAddress(SERVER, 8081);
 						try {
 							answerClient("new", NEW);
 							Socket s = new Socket();
-							s.connect(sa);
+							int timeout = Integer.parseInt(getPrefs().getString("timeout_list", null)) * 1000;
+							s.setSoTimeout(timeout);
+							String address = getPrefs().getString("ip/dns", null);
+							s.connect(createSA(address), timeout);
+							String password = getPrefs().getString("password", null);
 							sendSynced(s, password.getBytes(), STRING);
 							sendSynced(s, getIntBytes(RM_FILES), INTEGER);
 							answerClient(new String(receive(s)), NEW_LINE);
@@ -258,11 +251,14 @@ public class SendService extends Service {
 				new Thread() {
 					@Override
 					public void run() {
-						sa = new InetSocketAddress(SERVER, 8081);
 						try {
 							answerClient("new", NEW);
 							Socket s = new Socket();
-							s.connect(sa);
+							int timeout= Integer.parseInt(getPrefs().getString("timeout_list", null)) * 1000;
+							s.setSoTimeout(timeout);
+							String address = getPrefs().getString("ip/dns", null);
+							s.connect(createSA(address), timeout);
+							String password = getPrefs().getString("password", null);
 							sendSynced(s, password.getBytes(), STRING);
 							sendSynced(s, getIntBytes(GET_DISK_SPACE), INTEGER);
 							answerClient(new String(receive(s)) + " mb", NEW_LINE);
@@ -281,6 +277,18 @@ public class SendService extends Service {
 		};
 	}
 
+	public SharedPreferences getPrefs() {
+		return getSharedPreferences(getPackageName() + "_preferences", MODE_MULTI_PROCESS);
+	}
+	
+	public SocketAddress createSA(String address) throws Exception {
+		Pattern patt = Pattern.compile("^(.+):(\\d?\\d?\\d?\\d?\\d)$");
+		Matcher m = patt.matcher(address);
+		if (!m.matches()) throw new Exception("ip adress invalid");
+		SocketAddress sa = new InetSocketAddress(m.group(1), Integer.parseInt(m.group(2)));
+		return sa;
+	}
+	
 	class SendThread extends Thread {
 		private volatile int secondsToWait;
 		
@@ -292,16 +300,13 @@ public class SendService extends Service {
 			secondsToWait = sec;
 		}
 		
+		
 		@Override
 		public void run() {
-			sa = new InetSocketAddress(SERVER, 8081);
-			SharedPreferences.Editor editor = getSharedPreferences("debug2", MODE_WORLD_WRITEABLE | MODE_WORLD_READABLE).edit();
-			editor.putString("info", "started");
-			editor.commit();
 			while (true) {
 				Socket s = new Socket();
-				secondsToWait = 5*60*60;
 				try {
+					secondsToWait = Integer.parseInt(getPrefs().getString("scan_period", null));
 					while (secondsToWait > 0) {
 						secondsToWait--;
 						synchronized (this) {
@@ -310,7 +315,12 @@ public class SendService extends Service {
 					}
 					answerClient("new", NEW);
 					dbWrapper.removeDirtyFilePaths();
-					s.connect(sa);
+					String address = getPrefs().getString("ip/dns", null);
+					SocketAddress sa = createSA(address);
+					int timeout = Integer.parseInt(getPrefs().getString("timeout_list", null)) * 1000;
+					s.setSoTimeout(timeout);
+					s.connect(sa, timeout);
+					String password = getPrefs().getString("password", null);
 					sendSynced(s, password.getBytes(), STRING);
 					sendSynced(s, getIntBytes(SAVE_FILES), INTEGER);
 					List<Path> paths = dbWrapper.getPaths();
@@ -350,9 +360,6 @@ public class SendService extends Service {
 					} catch (RemoteException e1) {
 						e1.printStackTrace();
 					}
-					editor = getSharedPreferences("debug2", MODE_WORLD_WRITEABLE | MODE_WORLD_READABLE).edit();
-					editor.putString("error", e.getMessage());
-					editor.commit();
 					e.printStackTrace();
 				} finally {
 					try {

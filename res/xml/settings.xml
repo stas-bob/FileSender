@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory
+        android:title="@string/server">
+        <EditTextPreference
+            android:key="ip/dns"
+            android:title="@string/ip_dns"
+            android:summary="@string/give_ip_port"
+            android:defaultValue="127.0.0.1:0"/>
+        <EditTextPreference
+            android:key="password"
+            android:title="@string/password"
+            android:password="true"
+            android:defaultValue=""/>
+        <EditTextPreference
+		    android:key="scan_period"
+		    android:title="@string/scan_period"
+		    android:summary="@string/give_timeinterval"
+		    android:numeric="integer"
+		    android:defaultValue="3600"/>
+		<ListPreference
+		    android:key="timeout_list"
+		    android:defaultValue="5"
+		    android:title="@string/so_timeout"
+		    android:entries="@array/timeouts"
+		    android:entryValues="@array/timeouts_values"/>        
+    </PreferenceCategory>
+</PreferenceScreen>

@@ -171,6 +171,15 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 				return false;
 			}
 		});
+		MenuItem settings = menu.add("settings");
+		settings.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+			
+			@Override
+			public boolean onMenuItemClick(MenuItem item) {
+				startActivity(new Intent(Main.this, Settings.class));
+				return false;
+			}
+		});
 		return super.onCreateOptionsMenu(menu);
 	}
 	

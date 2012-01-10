@@ -8,6 +8,10 @@
 package de.stas;
 
 public final class R {
+    public static final class array {
+        public static final int timeouts=0x7f050000;
+        public static final int timeouts_values=0x7f050001;
+    }
     public static final class attr {
         /** <p>Must be a color value, in the form of "<code>#<i>rgb</i></code>", "<code>#<i>argb</i></code>",
 "<code>#<i>rrggbb</i></code>", or "<code>#<i>aarrggbb</i></code>".
@@ -28,15 +32,15 @@ containing a value of this type.
         public static final int percent=0x7f010001;
     }
     public static final class color {
-        public static final int black=0x7f050005;
-        public static final int blue=0x7f050004;
-        public static final int cyan=0x7f050008;
-        public static final int green=0x7f050000;
-        public static final int orange=0x7f050002;
-        public static final int purple=0x7f050003;
-        public static final int red=0x7f050006;
-        public static final int white=0x7f050007;
-        public static final int yellow=0x7f050001;
+        public static final int black=0x7f060005;
+        public static final int blue=0x7f060004;
+        public static final int cyan=0x7f060008;
+        public static final int green=0x7f060000;
+        public static final int orange=0x7f060002;
+        public static final int purple=0x7f060003;
+        public static final int red=0x7f060006;
+        public static final int white=0x7f060007;
+        public static final int yellow=0x7f060001;
     }
     public static final class drawable {
         public static final int file_icon=0x7f020000;
@@ -51,26 +55,26 @@ containing a value of this type.
         public static final int widget_shape=0x7f020009;
     }
     public static final class id {
-        public static final int confirm_cancel_dialog_button=0x7f070004;
-        public static final int confirm_ok_dialog_button=0x7f070003;
-        public static final int cur_act_emptyView_textView=0x7f07000d;
-        public static final int cur_act_listView=0x7f07000c;
-        public static final int cur_act_text_textView=0x7f07000b;
-        public static final int dialog_imgView=0x7f070001;
-        public static final int dialog_textView=0x7f070002;
-        public static final int file_textView=0x7f070000;
-        public static final int header_imgView=0x7f070005;
-        public static final int header_ok_button=0x7f070006;
-        public static final int info_dialog_ok_button=0x7f070007;
-        public static final int msg_textView=0x7f070010;
-        public static final int path_emptyView_textView=0x7f07000a;
-        public static final int path_listView=0x7f070009;
-        public static final int path_textView=0x7f070011;
-        public static final int path_text_textView=0x7f070008;
-        public static final int progress_textView=0x7f07000e;
-        public static final int timer_textView=0x7f07000f;
-        public static final int widget_layout=0x7f070012;
-        public static final int widget_textView=0x7f070013;
+        public static final int confirm_cancel_dialog_button=0x7f080004;
+        public static final int confirm_ok_dialog_button=0x7f080003;
+        public static final int cur_act_emptyView_textView=0x7f08000d;
+        public static final int cur_act_listView=0x7f08000c;
+        public static final int cur_act_text_textView=0x7f08000b;
+        public static final int dialog_imgView=0x7f080001;
+        public static final int dialog_textView=0x7f080002;
+        public static final int file_textView=0x7f080000;
+        public static final int header_imgView=0x7f080005;
+        public static final int header_ok_button=0x7f080006;
+        public static final int info_dialog_ok_button=0x7f080007;
+        public static final int msg_textView=0x7f080010;
+        public static final int path_emptyView_textView=0x7f08000a;
+        public static final int path_listView=0x7f080009;
+        public static final int path_textView=0x7f080011;
+        public static final int path_text_textView=0x7f080008;
+        public static final int progress_textView=0x7f08000e;
+        public static final int timer_textView=0x7f08000f;
+        public static final int widget_layout=0x7f080012;
+        public static final int widget_textView=0x7f080013;
     }
     public static final class layout {
         public static final int browser_file_list=0x7f030000;
@@ -83,19 +87,28 @@ containing a value of this type.
         public static final int widget=0x7f030007;
     }
     public static final class string {
-        public static final int app_name=0x7f060001;
-        public static final int cancel=0x7f060006;
-        public static final int content_descr=0x7f060004;
-        public static final int current_activity=0x7f060009;
-        public static final int empty=0x7f060008;
-        public static final int empty_list=0x7f060005;
-        public static final int hello=0x7f060000;
-        public static final int ok=0x7f060003;
-        public static final int paths=0x7f060007;
-        public static final int select_folder=0x7f060002;
+        public static final int app_name=0x7f070001;
+        public static final int cancel=0x7f070006;
+        public static final int content_descr=0x7f070004;
+        public static final int current_activity=0x7f070009;
+        public static final int empty=0x7f070008;
+        public static final int empty_list=0x7f070005;
+        public static final int five_sec=0x7f07000c;
+        public static final int give_ip_port=0x7f070011;
+        public static final int give_timeinterval=0x7f070010;
+        public static final int hello=0x7f070000;
+        public static final int ip_dns=0x7f07000b;
+        public static final int ok=0x7f070003;
+        public static final int password=0x7f07000e;
+        public static final int paths=0x7f070007;
+        public static final int scan_period=0x7f07000f;
+        public static final int select_folder=0x7f070002;
+        public static final int server=0x7f07000a;
+        public static final int so_timeout=0x7f07000d;
     }
     public static final class xml {
-        public static final int widget_provider=0x7f040000;
+        public static final int settings=0x7f040000;
+        public static final int widget_provider=0x7f040001;
     }
     public static final class styleable {
         /** Attributes that can be used with a colorButton.

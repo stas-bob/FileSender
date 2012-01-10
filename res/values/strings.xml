@@ -11,5 +11,12 @@
     <string name="paths">Paths</string>
     <string name="empty">empty</string>
     <string name="current_activity">Current Service activity</string>
-
+	<string name="server">Server</string>
+	<string name="ip_dns">ip/dns</string>
+	<string name="five_sec">5 Sekunden</string>
+	<string name="so_timeout">Socket Timeout</string>
+	<string name="password">Password</string>
+	<string name="scan_period">Scan period</string>
+	<string name="give_timeinterval">Give a time interval</string>
+	<string name="give_ip_port">Give ip/dns and port</string>
 </resources>

@@ -17,6 +17,7 @@
 #include <time.h>
 
 
+
 #define true 1
 #define false 0
 #define bufferSize 100
@@ -45,12 +46,12 @@ typedef struct {
 void *receive(int cd) {	
 	int type = INTEGER;
 	recv(cd, &type, sizeof(int), 0);
-	//printf("type %d\n", type);
+	printf("type %d\n", type);
 	if ((type & STRING) == STRING) {
 		int length = 0;
 		recv(cd, &length, sizeof(int), 0);
-		if (length > 200) return 0;
-		//printf("string length %d\n", length);
+		printf("string length %d\n", length);
+		if (length > 200 || length == 0) return 0;
 		void *mem = malloc(length + 1);
 		if (mem == 0) {
 			return 0;		
@@ -247,6 +248,7 @@ void rmFiles(int clientdescriptor, char *usbPath) {
 				   
 				while((entry = readdir(mydir))) {
 					char tmp[strlen(entry->d_name) + strlen(usbPath)];
+
 					strcpy(tmp, usbPath);
 					strcat(tmp, entry->d_name);
 					stat(tmp, &statbuf);
@@ -272,17 +274,27 @@ void rmFiles(int clientdescriptor, char *usbPath) {
 }
 
 void getDiskSpace(int cd, char *usbPath) {
-	struct statvfs fiData;
-	struct statvfs *fpData;
-	int i;
 
-	if((statvfs(usbPath,&fiData)) < 0 ) {
-		errorHandleSend(cd, "Failed to stat\0");
-	} else {
-		int bytes = (fiData.f_bfree * fiData.f_frsize) / (1024*1024);
-		sendNotSynced(cd, &bytes, sizeof(int), INTEGER);
-	}
+   struct statvfs buf;
+
+   if (!statvfs(usbPath, &buf)) {
+      unsigned long blksize, freeblks;
+      double free;
+      blksize = buf.f_bsize;
+      freeblks = buf.f_bfree;
+
+      free = (freeblks/4096)*(blksize/4096);
+      free = free / (1024*1024);
+      free = free * (4096*4096);
+      int i = (int)free;
+      sendNotSynced(cd, &i, sizeof(int), INTEGER);
+   }
+   else {
+      errorHandleSend(cd, "Failed to stat\0");
+   }
+
 }
+
 
 
 int main(int argc, char **argv) {
@@ -349,7 +361,7 @@ int main(int argc, char **argv) {
 			errorHandleSend(clientdescriptor, "password file not found\0");
 		} else {
 			fgets(pw, 16, pFile);
-			if (pFile != 0 && strcmp(pw, password) == 0) {
+			if (pFile != 0 && password != 0 && strcmp(pw, password) == 0) {
 				printf("authorized with password: %s\n", password); 
 				char *msg = "authorized\0";
 				sendNotSynced(clientdescriptor, msg, strlen(msg), STRING);
