@@ -217,7 +217,11 @@ public class SendService extends Service {
 							answerClient(new String(receive(s)), NEW_LINE);
 						} catch (Exception e) {
 							try {
-								answerClient(e.getMessage(), ERROR);
+								if (e.getMessage() == null || e.getMessage().length() == 0) {
+									answerClient(e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1), ERROR);
+								} else {
+									answerClient(e.getMessage(), ERROR);
+								}
 							} catch (RemoteException e1) {
 								e1.printStackTrace();
 							}
@@ -264,7 +268,11 @@ public class SendService extends Service {
 							answerClient(new String(receive(s)) + " mb", NEW_LINE);
 						} catch (Exception e) {
 							try {
-								answerClient(e.getMessage(), ERROR);
+								if (e.getMessage() == null || e.getMessage().length() == 0) {
+									answerClient(e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1), ERROR);
+								} else {
+									answerClient(e.getMessage(), ERROR);
+								}
 							} catch (RemoteException e1) {
 								e1.printStackTrace();
 							}
@@ -356,7 +364,11 @@ public class SendService extends Service {
 					}
 				} catch (Exception e) {
 					try {
-						answerClient(e.getMessage(), ERROR);
+						if (e.getMessage() == null || e.getMessage().length() == 0) {
+							answerClient(e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1), ERROR);
+						} else {
+							answerClient(e.getMessage(), ERROR);
+						}
 					} catch (RemoteException e1) {
 						e1.printStackTrace();
 					}
