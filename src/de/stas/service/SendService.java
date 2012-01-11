@@ -203,7 +203,6 @@ public class SendService extends Service {
 					@Override
 					public void run() {
 						try {
-							answerClient("new", NEW);
 							Socket s = new Socket();
 							int timeout = Integer.parseInt(getPrefs().getString("timeout_list", null)) * 1000;
 							s.setSoTimeout(timeout);
@@ -256,7 +255,6 @@ public class SendService extends Service {
 					@Override
 					public void run() {
 						try {
-							answerClient("new", NEW);
 							Socket s = new Socket();
 							int timeout= Integer.parseInt(getPrefs().getString("timeout_list", null)) * 1000;
 							s.setSoTimeout(timeout);
@@ -341,22 +339,18 @@ public class SendService extends Service {
 			            sendSynced(s, getIntBytes(files.length), INTEGER);
 						for (File file : files) {
 							answerClient("proceeding file " + file.getName(), NEW_LINE);
-				            byte[] bytes;
-				            try {
-				            	bytes = getBytesFromFile(file);
-				            } catch(Exception e) {
-				            	answerClient(e.getMessage(), ERROR);
-				            	sendSynced(s, e.getMessage().getBytes(), ERROR);
-				            	dbWrapper.addNewFile(file, path);
-				            	scanProgress++;
-				            	continue;
-				            }
+				           
 				            sendSynced(s, file.getName().getBytes(), STRING);
 			
-				            sendSynced(s, getIntBytes(bytes.length), INTEGER);
-				            sendSynced(s, getIntBytes(BEGIN_DATA), INTEGER);
-				            sendData(s.getOutputStream(), bytes);
-				            answerClient(new String(receive(s)), NEW_LINE);
+				            if (file.length() >= Integer.MAX_VALUE) {
+					            	answerClient(file.getName() + " too big", ERROR);
+					            	sendSynced(s, (file.getName() + " too big").getBytes(), ERROR);
+				            } else {
+					            sendSynced(s, getIntBytes((int)file.length()), INTEGER);
+					            sendSynced(s, getIntBytes(BEGIN_DATA), INTEGER);
+					            sendData(s.getOutputStream(), file);
+					            answerClient(new String(receive(s)), NEW_LINE);
+				            }
 				            dbWrapper.addNewFile(file, path);
 				            scanProgress++;
 				            answerClient("scanProgress: Folder: " + path.getPath() + " " + 100*scanProgress/files.length, PROGRESS);
@@ -383,18 +377,21 @@ public class SendService extends Service {
 			}
 		}
 
-		private void sendData(OutputStream out, byte[] bytes) {
+		private void sendData(OutputStream out, File file) {
 			try {
-				int bufferSize = 100;
+				int bufferSize = 1024;
 				int bytesWritten = 0;
-				while (bytesWritten < bytes.length) {
-					int remainingBytesCount = bytes.length - bytesWritten;
+				FileInputStream fis = new FileInputStream(file);
+				while (bytesWritten < file.length()) {
+					int remainingBytesCount = (int)file.length() - bytesWritten;
 					int actualBufferSize = 0;					
 					if (remainingBytesCount <= bufferSize) {
 						actualBufferSize = remainingBytesCount;
 					} else {
 						actualBufferSize = bufferSize;
 					}	
+					byte[] bytes = new byte[bufferSize];
+					fis.read(bytes);
 					out.write(bytes, bytesWritten, actualBufferSize);
 					bytesWritten += actualBufferSize;			
 				}

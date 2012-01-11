@@ -20,7 +20,7 @@
 
 #define true 1
 #define false 0
-#define bufferSize 100
+#define bufferSize 1024
 #define maxPathSize 100
 #define SAVE_FILES 1
 #define RM_FILES 2
@@ -147,82 +147,81 @@ void saveFiles(int clientdescriptor, char *usbPath) {
 				return;		
 			} else {
 				if (cPtr == (void*)-1) {
-					sendNotSynced(clientdescriptor, "ok\0", 2, STRING);
-					continue;				
-				}
-				char *msg = "filename ptr is ok\0";
-				sendNotSynced(clientdescriptor, msg, strlen(msg), STRING);
-			}
-			strcpy(file->fileName, cPtr);
-			free(cPtr);
-			strcat(file->fullName, file->fileName);
-			printf("received file name: %s\n", file->fileName);
-			iPtr = (int *)receive(clientdescriptor);
-			if (iPtr == 0) {
-				errorHandleSend(clientdescriptor, "filelength ptr is null\0");
-				return;		
-			} else {
-				if (iPtr == (void*)-1) {
-					sendNotSynced(clientdescriptor, "ok\0", 2, STRING);
-					return;
+					sendNotSynced(clientdescriptor, "ok\0", 2, STRING);				
 				} else {
-					char *msg = "filelength ptr is ok\0";
+					char *msg = "filename ptr is ok\0";
 					sendNotSynced(clientdescriptor, msg, strlen(msg), STRING);
-				}
-			}
-			file->fileLength = *iPtr;
-			free(iPtr);
-			printf("received file length: %d\n", file->fileLength);  
-
-			FILE *pFile = fopen(file->fullName, "w+b");
-			if (pFile == 0) {
-				errorHandleSend(clientdescriptor, strerror(errno));
-			} else {
-				iPtr = (int *)receive(clientdescriptor);
-				if (iPtr == 0) {
-					errorHandleSend(clientdescriptor, "begin_data ptr is null\0");
-					fclose(pFile);
-					return;
-				} else {
-					if (iPtr == (void*)-1) {
-						sendNotSynced(clientdescriptor, "ok\0", 2, STRING);
-						return;						
+					strcpy(file->fileName, cPtr);
+					free(cPtr);
+					strcat(file->fullName, file->fileName);
+					printf("received file name: %s\n", file->fileName);
+					iPtr = (int *)receive(clientdescriptor);
+					if (iPtr == 0) {
+						errorHandleSend(clientdescriptor, "filelength ptr is null\0");
+						return;		
 					} else {
-						char *msg = "begin_data ptr is ok\0";
-						sendNotSynced(clientdescriptor, msg, strlen(msg), STRING);
-					}
-				}
-				int begin_data = *iPtr;
-				free(iPtr);
-				if (begin_data == BEGIN_DATA) {
-					printf("writing into: %s\n", file->fullName);
-					int bytesRead = 0;
-
-					while (bytesRead < file->fileLength) {
-						int remainingBytesCount = file->fileLength - bytesRead;
-						int actualBufferSize = 0;					
-						if (remainingBytesCount >= bufferSize) {
-							actualBufferSize = bufferSize;
+						if (iPtr == (void*)-1) {
+							sendNotSynced(clientdescriptor, "ok\0", 2, STRING);
+							return;
 						} else {
-							memset(buffer, 0, bufferSize);
-							actualBufferSize = remainingBytesCount;
-						}	
-						int bytesRecv = recv(clientdescriptor, buffer, actualBufferSize, 0);
-						//printf("bytes received: %d\n", bytesRecv);
-						fwrite(buffer, 1, bytesRecv, pFile);				
-						bytesRead += bytesRecv;			
+							char *msg = "filelength ptr is ok\0";
+							sendNotSynced(clientdescriptor, msg, strlen(msg), STRING);
+						}
 					}
-					fputs("\0", pFile);
-					printf("finished writing %s\n", file->fullName);
-					sendNotSynced(clientdescriptor, "done\0", 5, STRING); 
-				} else {
-					errorHandleSend(clientdescriptor, "wrong integer for begin_data\0");
-					fclose(pFile);
-					return;
-				}
-				fclose(pFile);
-			}
+					file->fileLength = *iPtr;
+					free(iPtr);
+					printf("received file length: %d\n", file->fileLength);  
 
+					FILE *pFile = fopen(file->fullName, "w+b");
+					if (pFile == 0) {
+						errorHandleSend(clientdescriptor, strerror(errno));
+					} else {
+						iPtr = (int *)receive(clientdescriptor);
+						if (iPtr == 0) {
+							errorHandleSend(clientdescriptor, "begin_data ptr is null\0");
+							fclose(pFile);
+							return;
+						} else {
+							if (iPtr == (void*)-1) {
+								sendNotSynced(clientdescriptor, "ok\0", 2, STRING);
+								return;						
+							} else {
+								char *msg = "begin_data ptr is ok\0";
+								sendNotSynced(clientdescriptor, msg, strlen(msg), STRING);
+							}
+						}
+						int begin_data = *iPtr;
+						free(iPtr);
+						if (begin_data == BEGIN_DATA) {
+							printf("writing into: %s\n", file->fullName);
+							int bytesRead = 0;
+
+							while (bytesRead < file->fileLength) {
+								int remainingBytesCount = file->fileLength - bytesRead;
+								int actualBufferSize = 0;					
+								if (remainingBytesCount >= bufferSize) {
+									actualBufferSize = bufferSize;
+								} else {
+									memset(buffer, 0, bufferSize);
+									actualBufferSize = remainingBytesCount;
+								}	
+								int bytesRecv = recv(clientdescriptor, buffer, actualBufferSize, 0);
+								//printf("bytes received: %d\n", bytesRecv);
+								fwrite(buffer, 1, bytesRecv, pFile);				
+								bytesRead += bytesRecv;			
+							}
+							fputs("\0", pFile);
+							printf("finished writing %s\n", file->fullName);
+							sendNotSynced(clientdescriptor, "done\0", 5, STRING); 
+						} else {
+							errorHandleSend(clientdescriptor, "wrong integer for begin_data\0");
+							fclose(pFile);
+							return;
+						}
+						fclose(pFile);
+					}
+				}	
+			}
 		}
 	}	
 }

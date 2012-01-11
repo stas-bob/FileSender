@@ -1,6 +1,6 @@
 /*
  * This file is auto-generated.  DO NOT MODIFY.
- * Original file: /home/bline/workspace/FileSender/src/de/stas/service/ClientINTF.aidl
+ * Original file: C:\\Users\\bline_asus\\workspace\\FileSender\\src\\de\\stas\\service\\ClientINTF.aidl
  */
 package de.stas.service;
 public interface ClientINTF extends android.os.IInterface
