@@ -345,7 +345,11 @@ public class SendService extends Service {
 				            try {
 				            	bytes = getBytesFromFile(file);
 				            } catch(Exception e) {
-				            	answerClient(e.getMessage(), ERROR);
+				            	if (e.getMessage() == null || e.getMessage().length() == 0) {
+				            		answerClient(e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1), ERROR);
+				            	} else {
+				            		answerClient(e.getMessage(), ERROR);
+				            	}
 				            	sendSynced(s, e.getMessage().getBytes(), ERROR);
 				            	dbWrapper.addNewFile(file, path);
 				            	scanProgress++;
