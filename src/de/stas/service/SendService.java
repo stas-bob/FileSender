@@ -360,10 +360,12 @@ public class SendService extends Service {
 					try {
 						if (e.getMessage() == null || e.getMessage().length() == 0) {
 							answerClient(e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1), ERROR);
+							sendSynced(s, e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1).getBytes(), ERROR);
 						} else {
 							answerClient(e.getMessage(), ERROR);
+							sendSynced(s, e.getMessage().getBytes(), ERROR);
 						}
-					} catch (RemoteException e1) {
+					} catch (Exception e1) {
 						e1.printStackTrace();
 					}
 					e.printStackTrace();
@@ -377,11 +379,12 @@ public class SendService extends Service {
 			}
 		}
 
-		private void sendData(OutputStream out, File file) {
+		private void sendData(OutputStream out, File file) throws IOException {
+			FileInputStream fis = null;
 			try {
 				int bufferSize = 1024;
 				int bytesWritten = 0;
-				FileInputStream fis = new FileInputStream(file);
+				fis = new FileInputStream(file);
 				while (bytesWritten < file.length()) {
 					int remainingBytesCount = (int)file.length() - bytesWritten;
 					int actualBufferSize = 0;					
@@ -395,8 +398,8 @@ public class SendService extends Service {
 					out.write(bytes, bytesWritten, actualBufferSize);
 					bytesWritten += actualBufferSize;			
 				}
-			} catch (IOException e) {
-				e.printStackTrace();
+			} finally {
+				fis.close();
 			}
 			
 		}
