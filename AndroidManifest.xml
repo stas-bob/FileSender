@@ -27,7 +27,7 @@
         <activity android:name=".Directory" android:label="@string/app_name"/>
         <activity android:name=".Settings" android:label="@string/app_name"/>
         <service android:name="de.stas.service.SendService"
-       		android:process=":SendService"> 
+       		> 
        		<intent-filter>
        			<action android:name="de.stas.service.SendService"/>
        		</intent-filter>

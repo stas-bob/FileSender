@@ -23,6 +23,7 @@ import android.os.IBinder;
 import android.os.RemoteException;
 import android.preference.PreferenceManager;
 import de.stas.R;
+import de.stas.ServerException;
 import de.stas.db.DBWrapper;
 import de.stas.db.content.Path;
 
@@ -41,6 +42,7 @@ public class SendService extends Service {
 	private static final int NEW_LINE = 6;
 	private static final int NEW = 7;
 	private static final int PROGRESS = 8;
+	private static final int SKIP = 14;
 
 	
 	@Override
@@ -117,6 +119,18 @@ public class SendService extends Service {
 		answerClient(msg, NEW_LINE);
 	}
 	
+	public void sendNotSynced(Socket s, byte[] ptr, int type) throws Exception {
+		s.getOutputStream().write(toLittleEndian(type));
+		if ((type & 0x2) == STRING) {
+			s.getOutputStream().write(toLittleEndian(ptr.length));
+			s.getOutputStream().write(ptr);
+		} else {
+			ByteBuffer buf = ByteBuffer.wrap(ptr);
+			int i = buf.getInt();
+			s.getOutputStream().write(toLittleEndian(i));
+		}
+	}
+	
 	public byte[] toLittleEndian(int i) {
 		ByteBuffer buf = ByteBuffer.allocate(4);
 		buf.order(ByteOrder.LITTLE_ENDIAN);
@@ -135,7 +149,7 @@ public class SendService extends Service {
 				str += (char)c;
 			}
 			if ((type & ERROR) == ERROR) {
-				throw new Exception(str);
+				throw new ServerException(str);
 			} else {
 				return str.getBytes();
 			}
@@ -203,7 +217,6 @@ public class SendService extends Service {
 					@Override
 					public void run() {
 						try {
-							answerClient("new", NEW);
 							Socket s = new Socket();
 							int timeout = Integer.parseInt(getPrefs().getString("timeout_list", null)) * 1000;
 							s.setSoTimeout(timeout);
@@ -256,7 +269,6 @@ public class SendService extends Service {
 					@Override
 					public void run() {
 						try {
-							answerClient("new", NEW);
 							Socket s = new Socket();
 							int timeout= Integer.parseInt(getPrefs().getString("timeout_list", null)) * 1000;
 							s.setSoTimeout(timeout);
@@ -341,39 +353,40 @@ public class SendService extends Service {
 			            sendSynced(s, getIntBytes(files.length), INTEGER);
 						for (File file : files) {
 							answerClient("proceeding file " + file.getName(), NEW_LINE);
-				            byte[] bytes;
-				            try {
-				            	bytes = getBytesFromFile(file);
-				            } catch(Exception e) {
-				            	if (e.getMessage() == null || e.getMessage().length() == 0) {
-				            		answerClient(e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1), ERROR);
-				            	} else {
-				            		answerClient(e.getMessage(), ERROR);
-				            	}
-				            	sendSynced(s, e.getMessage().getBytes(), ERROR);
-				            	dbWrapper.addNewFile(file, path);
-				            	scanProgress++;
-				            	continue;
-				            }
+				           
 				            sendSynced(s, file.getName().getBytes(), STRING);
-			
-				            sendSynced(s, getIntBytes(bytes.length), INTEGER);
-				            sendSynced(s, getIntBytes(BEGIN_DATA), INTEGER);
-				            sendData(s.getOutputStream(), bytes);
-				            answerClient(new String(receive(s)), NEW_LINE);
+
+				            if (file.length() >= 10*1024*1024) {
+					            	answerClient(file.getName() + " too big (> 10MB).\nWill be skipped.", ERROR);
+					            	sendNotSynced(s, (file.getName() + " too big. Will be skipped.").getBytes(), SKIP);
+				            } else {
+				            	answerClient("file size: " + file.length(), NEW_LINE);
+					            sendSynced(s, getIntBytes((int)file.length()), INTEGER);
+					            sendSynced(s, getIntBytes(BEGIN_DATA), INTEGER);
+					            sendData(s.getOutputStream(), file);
+					            answerClient(new String(receive(s)), NEW_LINE);
+				            }
 				            dbWrapper.addNewFile(file, path);
 				            scanProgress++;
 				            answerClient("scanProgress: Folder: " + path.getPath() + " " + 100*scanProgress/files.length, PROGRESS);
 						}
 					}
+				} catch (ServerException se) {
+					try {
+						answerClient(se.getMessage(), ERROR);
+					} catch (RemoteException e) {
+						e.printStackTrace();
+					}
 				} catch (Exception e) {
 					try {
 						if (e.getMessage() == null || e.getMessage().length() == 0) {
 							answerClient(e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1), ERROR);
+							sendNotSynced(s, e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1).getBytes(), ERROR);
 						} else {
 							answerClient(e.getMessage(), ERROR);
+							sendNotSynced(s, e.getMessage().getBytes(), ERROR);
 						}
-					} catch (RemoteException e1) {
+					} catch (Exception e1) {
 						e1.printStackTrace();
 					}
 					e.printStackTrace();
@@ -387,23 +400,27 @@ public class SendService extends Service {
 			}
 		}
 
-		private void sendData(OutputStream out, byte[] bytes) {
+		private void sendData(OutputStream out, File file) throws IOException {
+			FileInputStream fis = null;
 			try {
-				int bufferSize = 100;
+				int bufferSize = 1024;
 				int bytesWritten = 0;
-				while (bytesWritten < bytes.length) {
-					int remainingBytesCount = bytes.length - bytesWritten;
+				fis = new FileInputStream(file);
+				while (bytesWritten < file.length()) {
+					int remainingBytesCount = (int)file.length() - bytesWritten;
 					int actualBufferSize = 0;					
 					if (remainingBytesCount <= bufferSize) {
 						actualBufferSize = remainingBytesCount;
 					} else {
 						actualBufferSize = bufferSize;
 					}	
-					out.write(bytes, bytesWritten, actualBufferSize);
+					byte[] bytes = new byte[actualBufferSize];
+					fis.read(bytes);
+					out.write(bytes);
 					bytesWritten += actualBufferSize;			
 				}
-			} catch (IOException e) {
-				e.printStackTrace();
+			} finally {
+				fis.close();
 			}
 			
 		}
