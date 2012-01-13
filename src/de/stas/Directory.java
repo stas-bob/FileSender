@@ -117,7 +117,7 @@ public class Directory extends BaseActivity implements OnItemClickListener, OnCl
 			ViewHolder holder = null;
 			if (convertView == null) {
 				convertView = ((LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE)).inflate(R.layout.browser_file_list, null);
-				holder = new ViewHolder(convertView);
+				holder = new ViewHolder(convertView.findViewById(R.id.file_textView));
 				convertView.setTag(holder);
 			}
 			holder = (ViewHolder) convertView.getTag();
