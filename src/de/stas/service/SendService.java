@@ -363,7 +363,7 @@ public class SendService extends Service {
 				            	answerClient("file size: " + file.length(), NEW_LINE);
 					            sendSynced(s, getIntBytes((int)file.length()), INTEGER);
 					            sendSynced(s, getIntBytes(BEGIN_DATA), INTEGER);
-					            sendData(s.getOutputStream(), file);
+					            sendData(s, file);
 					            answerClient(new String(receive(s)), NEW_LINE);
 				            }
 				            dbWrapper.addNewFile(file, path);
@@ -400,8 +400,10 @@ public class SendService extends Service {
 			}
 		}
 
-		private void sendData(OutputStream out, File file) throws IOException {
+		private void sendData(Socket s, File file) throws NumberFormatException, Exception {
 			FileInputStream fis = null;
+			OutputStream out = s.getOutputStream();
+			InputStream in = s.getInputStream();
 			try {
 				int bufferSize = 1024;
 				int bytesWritten = 0;
@@ -418,6 +420,12 @@ public class SendService extends Service {
 					fis.read(bytes);
 					out.write(bytes);
 					bytesWritten += actualBufferSize;			
+					try {
+						String data = new String(receive(s));
+						answerClient(100*Integer.parseInt(data)/file.length() + "", PROGRESS);
+					} catch (RemoteException e) {
+						e.printStackTrace();
+					}
 				}
 			} finally {
 				fis.close();

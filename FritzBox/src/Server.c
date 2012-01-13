@@ -231,7 +231,8 @@ void *saveFiles(int clientdescriptor, char *usbPath, void *vPtr) {
 													return vPtr;
 												}																	
 												fwrite(buffer, 1, bytesRecv, pFile);				
-												bytesRead += bytesRecv;			
+												bytesRead += bytesRecv;
+												sendNotSynced(clientdescriptor, &bytesRead, sizeof(int), INTEGER);		
 											}
 											fputs("\0", pFile);
 											printf("finished writing %s\n", file->fullName);
