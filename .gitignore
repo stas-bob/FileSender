@@ -1,4 +1,4 @@
-gen
-bin
+gen/
+bin/
 project.properties
 proguard.cfg
