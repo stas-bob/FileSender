@@ -213,6 +213,7 @@ void *saveFiles(int clientdescriptor, char *usbPath, void *vPtr) {
 										sendNotSynced(clientdescriptor, msg, strlen(msg), STRING);
 										int begin_data = *((int *)vPtr);
 										if (begin_data == BEGIN_DATA) {
+											sendNotSynced(clientdescriptor, "starting", 5, STRING);
 											printf("writing into: %s\n", file->fullName);
 											int bytesRead = 0;
 

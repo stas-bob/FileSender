@@ -19,6 +19,7 @@ import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import de.stas.db.content.Path;
 import de.stas.service.ClientINTF;
@@ -28,19 +29,25 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 	private ListView pathsListView, msgsListView;
 	private ServiceINTF service;
 	private TextView timer;
-	private TextView progress;
+	private TextView progressSpeedTextView;
+	private TextView progressAllTextView;
+	private ProgressBar progressAll;
+	private ProgressBar progressDetail;
 	private Callback callback;
 	
 	@Override
 	public void onCreate(Bundle b) {
 		super.onCreate(b);
 		setContentView(R.layout.main);
+		progressAll = (ProgressBar)findViewById(R.id.progress_all);
+		progressAllTextView = (TextView)findViewById(R.id.progress_all_textView);
+		progressDetail = (ProgressBar)findViewById(R.id.progress_detail);
+		progressSpeedTextView = (TextView)findViewById(R.id.progress_detail_speed_textView);
 		timer = (TextView)findViewById(R.id.timer_textView);
 		pathsListView = (ListView)findViewById(R.id.path_listView);
 		msgsListView = (ListView)findViewById(R.id.cur_act_listView);
 		pathsListView.setEmptyView((TextView)findViewById(R.id.path_emptyView_textView));
 		msgsListView.setEmptyView((TextView)findViewById(R.id.cur_act_emptyView_textView));
-		progress = (TextView)findViewById(R.id.progress_textView);
 		pathsListView.setOnItemClickListener(this);
 		try {
 			List<Path> paths = dbwrapper.getPaths();
@@ -326,7 +333,9 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 					@Override
 					public void run() {
 						((MsgsArrayAdapter)msgsListView.getAdapter()).clear();
-						progress.setText("");
+						progressSpeedTextView.setText("");
+						progressAll.setProgress(0);
+						progressDetail.setProgress(0);
 						changed();
 					}
 				});
@@ -367,12 +376,28 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 		}
 
 		@Override
-		public void progress(final String str) throws RemoteException {
+		public void progressAll(final String current, final int i) throws RemoteException {
 			try {
 				runOnUiThread(new Runnable() {
 					@Override
 					public void run() {
-						progress.setText(str.substring(str.indexOf(' ') + 1) + " %");
+						progressAll.setProgress(i);
+						progressAllTextView.setText(current);
+					}
+				});
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
+		@Override
+		public void progressDetail(final String speed, final int i) throws RemoteException {
+			try {
+				runOnUiThread(new Runnable() {
+					@Override
+					public void run() {
+						progressDetail.setProgress(i);
+						progressSpeedTextView.setText(speed);
 					}
 				});
 			} catch (Exception e) {
@@ -384,6 +409,7 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 			((MsgsArrayAdapter)msgsListView.getAdapter()).notifyDataSetChanged();
 			msgsListView.setSelection(((MsgsArrayAdapter)msgsListView.getAdapter()).getCount());
 		}
+
 		
 	}
 	

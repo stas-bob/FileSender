@@ -10,6 +10,7 @@ import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
@@ -31,6 +32,7 @@ public class SendService extends Service {
 	private HashMap<String, ClientINTF> clients;
 	private DBWrapper dbWrapper;
 	private SendThread st;
+	private DecimalFormat df = new DecimalFormat("0.00");
 	private static final int SAVE_FILES = 1;
 	private static final int RM_FILES = 2;
 	private static final int BEGIN_DATA = 3;
@@ -39,9 +41,6 @@ public class SendService extends Service {
 	private static final int ERROR = 3;
 	private static final int INTEGER = 0;
 	private static final int GET_DISK_SPACE = 5;
-	private static final int NEW_LINE = 6;
-	private static final int NEW = 7;
-	private static final int PROGRESS = 8;
 	private static final int SKIP = 14;
 
 	
@@ -57,15 +56,36 @@ public class SendService extends Service {
 		System.exit(0);
 	}
 	
-	public void answerClient(String msg, int type) throws RemoteException {
+
+	
+	public void sendErrorToClient(String msg) throws RemoteException {
 		Set<String> appNames = clients.keySet();
 		for (String appName : appNames) {
-			switch (type) {
-			case ERROR: clients.get(appName).error(msg); break;
-			case NEW_LINE: clients.get(appName).newLine(msg); break;
-			case NEW: clients.get(appName).newMessages(); break;
-			case PROGRESS: clients.get(appName).progress(msg); break;
-			}
+			clients.get(appName).error(msg);
+		}
+	}
+	public void sendNewLineToClient(String msg) throws RemoteException {
+		Set<String> appNames = clients.keySet();
+		for (String appName : appNames) {
+			clients.get(appName).newLine(msg);
+		}
+	}
+	public void sendNewMessagesToClient() throws RemoteException {
+		Set<String> appNames = clients.keySet();
+		for (String appName : appNames) {
+			clients.get(appName).newMessages();
+		}
+	}
+	public void sendProgressAllToClient(String current, int i) throws RemoteException {
+		Set<String> appNames = clients.keySet();
+		for (String appName : appNames) {
+			clients.get(appName).progressAll(current, i);
+		}
+	}
+	public void sendProgressDetailToClient(String speed, int i) throws RemoteException {
+		Set<String> appNames = clients.keySet();
+		for (String appName : appNames) {
+			clients.get(appName).progressDetail(speed, i);
 		}
 	}
 	
@@ -116,7 +136,7 @@ public class SendService extends Service {
 			s.getOutputStream().write(toLittleEndian(i));
 		}
 		String msg = new String(receive(s));
-		answerClient(msg, NEW_LINE);
+		sendNewLineToClient(msg);
 	}
 	
 	public void sendNotSynced(Socket s, byte[] ptr, int type) throws Exception {
@@ -159,28 +179,13 @@ public class SendService extends Service {
 		}
 	}
 	
-	public byte[] getBytesFromFile(File file) throws Exception {
-	    InputStream is = new FileInputStream(file);
-
-	    long length = file.length();
-
-	    if (length > 2*1000*1000) {
-	    	throw new Exception("File " + file.getName() + " is too big");
-	    }
-	    byte[] bytes = new byte[(int)length];
-
-	    int offset = 0;
-	    int bytesRead = 0;
-	    while (offset < bytes.length && (bytesRead = is.read(bytes, offset, bytes.length - offset)) >= 0) {
-	        offset += bytesRead;
-	    }
-
-	    if (offset < bytes.length) {
-	        throw new IOException("Could not completely read file " + file.getName());
-	    }
-
-	    is.close();
-	    return bytes;
+	private int receiveInt(Socket s) throws Exception {
+		int type = readInt(s.getInputStream());
+		if ((type & INTEGER) == INTEGER) {
+			int data = readInt(s.getInputStream());
+			return data;
+		}
+		throw new Exception("This is not an INTEGER");
 	}
 	
 	@Override
@@ -225,15 +230,15 @@ public class SendService extends Service {
 							String password = getPrefs().getString("password", null);
 							sendSynced(s, password.getBytes(), STRING);
 							sendSynced(s, getIntBytes(RM_FILES), INTEGER);
-							answerClient(new String(receive(s)), NEW_LINE);
+							sendNewLineToClient(new String(receive(s)));
 							sendSynced(s, getIntBytes(BEGIN_RM), INTEGER);
-							answerClient(new String(receive(s)), NEW_LINE);
+							sendNewLineToClient(new String(receive(s)));
 						} catch (Exception e) {
 							try {
 								if (e.getMessage() == null || e.getMessage().length() == 0) {
-									answerClient(e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1), ERROR);
+									sendErrorToClient(e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1));
 								} else {
-									answerClient(e.getMessage(), ERROR);
+									sendErrorToClient(e.getMessage());
 								}
 							} catch (RemoteException e1) {
 								e1.printStackTrace();
@@ -268,8 +273,8 @@ public class SendService extends Service {
 				new Thread() {
 					@Override
 					public void run() {
+						Socket s = new Socket();
 						try {
-							Socket s = new Socket();
 							int timeout= Integer.parseInt(getPrefs().getString("timeout_list", null)) * 1000;
 							s.setSoTimeout(timeout);
 							String address = getPrefs().getString("ip/dns", null);
@@ -277,15 +282,17 @@ public class SendService extends Service {
 							String password = getPrefs().getString("password", null);
 							sendSynced(s, password.getBytes(), STRING);
 							sendSynced(s, getIntBytes(GET_DISK_SPACE), INTEGER);
-							answerClient(new String(receive(s)) + " mb", NEW_LINE);
+							sendNewLineToClient(new String(receive(s)) + " mb");
 						} catch (Exception e) {
 							try {
 								if (e.getMessage() == null || e.getMessage().length() == 0) {
-									answerClient(e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1), ERROR);
+									sendErrorToClient(e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1));
+									sendNotSynced(s, e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1).getBytes(), ERROR);
 								} else {
-									answerClient(e.getMessage(), ERROR);
+									sendErrorToClient(e.getMessage());
+									sendNotSynced(s, e.getMessage().getBytes(), ERROR);
 								}
-							} catch (RemoteException e1) {
+							} catch (Exception e1) {
 								e1.printStackTrace();
 							}
 							e.printStackTrace();
@@ -333,7 +340,7 @@ public class SendService extends Service {
 							wait(1000);
 						}
 					}
-					answerClient("new", NEW);
+					sendNewMessagesToClient();
 					dbWrapper.removeDirtyFilePaths();
 					String address = getPrefs().getString("ip/dns", null);
 					SocketAddress sa = createSA(address);
@@ -345,45 +352,47 @@ public class SendService extends Service {
 					sendSynced(s, getIntBytes(SAVE_FILES), INTEGER);
 					List<Path> paths = dbWrapper.getPaths();
 					sendSynced(s, getIntBytes(paths.size()), INTEGER);
-
+					
 					for (Path path : paths) {
+						sendProgressAllToClient(path.getPath(), 0);
 						int scanProgress = 0;
 						File[] files = new File(path.getPath()).listFiles();
 						files = dbWrapper.filterNewFiles(files);
 			            sendSynced(s, getIntBytes(files.length), INTEGER);
 						for (File file : files) {
-							answerClient("proceeding file " + file.getName(), NEW_LINE);
+							sendNewLineToClient("proceeding file " + file.getName());
 				           
 				            sendSynced(s, file.getName().getBytes(), STRING);
 
-				            if (file.length() >= 10*1024*1024) {
-					            	answerClient(file.getName() + " too big (> 10MB).\nWill be skipped.", ERROR);
+				            if (file.length() >= 5*1024*1024) {
+					            	sendErrorToClient(file.getName() + " too big (> 5MB).\nWill be skipped.");
 					            	sendNotSynced(s, (file.getName() + " too big. Will be skipped.").getBytes(), SKIP);
 				            } else {
-				            	answerClient("file size: " + file.length(), NEW_LINE);
+				            	sendNewLineToClient("file size: " + file.length());
 					            sendSynced(s, getIntBytes((int)file.length()), INTEGER);
 					            sendSynced(s, getIntBytes(BEGIN_DATA), INTEGER);
+					            receive(s);
 					            sendData(s, file);
-					            answerClient(new String(receive(s)), NEW_LINE);
+					            sendNewLineToClient(new String(receive(s)));
 				            }
 				            dbWrapper.addNewFile(file, path);
 				            scanProgress++;
-				            answerClient("scanProgress: Folder: " + path.getPath() + " " + 100*scanProgress/files.length, PROGRESS);
+				            sendProgressAllToClient(path.getPath(), 100*scanProgress/files.length);
 						}
 					}
 				} catch (ServerException se) {
 					try {
-						answerClient(se.getMessage(), ERROR);
+						sendErrorToClient(se.getMessage());
 					} catch (RemoteException e) {
 						e.printStackTrace();
 					}
 				} catch (Exception e) {
 					try {
 						if (e.getMessage() == null || e.getMessage().length() == 0) {
-							answerClient(e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1), ERROR);
+							sendErrorToClient(e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1));
 							sendNotSynced(s, e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1).getBytes(), ERROR);
 						} else {
-							answerClient(e.getMessage(), ERROR);
+							sendErrorToClient(e.getMessage());
 							sendNotSynced(s, e.getMessage().getBytes(), ERROR);
 						}
 					} catch (Exception e1) {
@@ -403,11 +412,12 @@ public class SendService extends Service {
 		private void sendData(Socket s, File file) throws NumberFormatException, Exception {
 			FileInputStream fis = null;
 			OutputStream out = s.getOutputStream();
-			InputStream in = s.getInputStream();
+			
 			try {
 				int bufferSize = 1024;
 				int bytesWritten = 0;
 				fis = new FileInputStream(file);
+				int lastBytesRemotelyWritten = 0;
 				while (bytesWritten < file.length()) {
 					int remainingBytesCount = (int)file.length() - bytesWritten;
 					int actualBufferSize = 0;					
@@ -421,8 +431,19 @@ public class SendService extends Service {
 					out.write(bytes);
 					bytesWritten += actualBufferSize;			
 					try {
-						String data = new String(receive(s));
-						answerClient(100*Integer.parseInt(data)/file.length() + "", PROGRESS);
+						long start = System.currentTimeMillis();
+						int bytesRemotelyWritten = receiveInt(s);
+						long delayMS = System.currentTimeMillis() - start;
+						int currentRemotelyWrittenBytes = bytesRemotelyWritten - lastBytesRemotelyWritten;
+						boolean mb = false; 
+						if (delayMS == 0) delayMS = 1;
+						double speed = 1000*(currentRemotelyWrittenBytes / 1024)/(double)delayMS;
+						if (speed > 999) {
+							speed /= 1024;
+							mb = true;
+						}
+						sendProgressDetailToClient(df.format(speed) + (mb ? " mb/s" : " kb/s"), (int)((100 * bytesRemotelyWritten) / (double)file.length()));
+						lastBytesRemotelyWritten = bytesRemotelyWritten;
 					} catch (RemoteException e) {
 						e.printStackTrace();
 					}
@@ -432,6 +453,8 @@ public class SendService extends Service {
 			}
 			
 		}
+
+
 	}
 }
 

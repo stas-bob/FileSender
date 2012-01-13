@@ -4,5 +4,6 @@ interface ClientINTF {
 	void newMessages();
 	void newLine(String line);
 	void error(String errMsg);
-	void progress(String i);
+	void progressAll(String current, int i);
+	void progressDetail(String speed, int i);
 }

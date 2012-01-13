@@ -28,16 +28,43 @@
         android:textColor="@color/white"/>"
 	<ListView
 		android:id="@+id/cur_act_listView"
-		android:layout_height="200dp"
-		android:layout_width="fill_parent"/>
+		android:layout_height="100dp"
+		android:layout_width="fill_parent"
+		android:divider="@color/transparent"/>
 	<TextView
 	    android:id="@+id/cur_act_emptyView_textView"
         android:layout_height="wrap_content"
         android:layout_width="wrap_content"
         android:textColor="@color/red"
         android:text="@string/empty"/>
+	<LinearLayout
+	    android:layout_marginTop="10dp" 
+	    android:layout_width="fill_parent"
+	    android:layout_height="wrap_content"
+	    android:gravity="center">
+		<ProgressBar
+		    android:id="@+id/progress_detail"
+		    android:layout_width="0px"
+		    android:layout_height="wrap_content"
+		    android:max="100"
+		    style="@style/HorizontalBar"
+		    android:layout_weight=".65"/>
+	    <TextView 
+	        android:id="@+id/progress_detail_speed_textView"
+	        android:layout_width="0px"
+	        android:layout_height="wrap_content"
+	        android:layout_weight=".35"
+	        android:layout_marginLeft="5dp"/>
+	</LinearLayout>
+	<ProgressBar
+	    android:id="@+id/progress_all"
+	    android:layout_width="fill_parent"
+	    android:layout_height="wrap_content"
+	    style="@style/HorizontalBar"
+	    android:max="100"/>
 	<TextView
-	    android:id="@+id/progress_textView"
+	    android:id="@+id/progress_all_textView"
+	    android:layout_marginTop="5dp"
         android:layout_height="wrap_content"
         android:layout_width="wrap_content"
         android:layout_gravity="center"/>
