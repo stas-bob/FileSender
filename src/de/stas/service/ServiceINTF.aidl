@@ -9,4 +9,6 @@ interface ServiceINTF {
 	void scanNow();
 	void deleteRemoteFiles();
 	void getRemoteFreeSpace();
+	void interrupt();
+	boolean isScanning();
 }

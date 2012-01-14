@@ -11,9 +11,11 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -28,11 +30,29 @@ public class Directory extends BaseActivity implements OnItemClickListener, OnCl
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        final boolean customTitleSupported = requestWindowFeature(Window.FEATURE_CUSTOM_TITLE);
+
+        setContentView(R.layout.directory);
+        if ( customTitleSupported ) {
+            getWindow().setFeatureInt(Window.FEATURE_CUSTOM_TITLE, R.layout.directory_title_bar);
+        }
+
+
+        if (customTitleSupported ) {
+            getWindow().setFeatureInt(Window.FEATURE_CUSTOM_TITLE, R.layout.directory_title_bar);
+            ImageView imgView = (ImageView)findViewById(R.id.directory_title_bar_imgView);
+            imgView.setOnClickListener(new OnClickListener() {
+				
+				@Override
+				public void onClick(View v) {
+					finish();
+				}
+			});
+        }
         String path = "/";
         if (savedInstanceState != null) {
         	path = savedInstanceState.getString("currentRootPath");
         }
-        setContentView(R.layout.directory);
         currentRoot = new File(path);
         list = (ListView)findViewById(android.R.id.list);
         list.setOnItemClickListener(this);

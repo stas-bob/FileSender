@@ -20,6 +20,7 @@
 	<de.stas.views.ColorButton
 		android:id="@+id/header_ok_button"
 		android:layout_width="wrap_content"
+		android:minWidth="50dp"
 		android:layout_height="wrap_content"
 		android:alpha="0.6"
 		android:text="@string/ok"

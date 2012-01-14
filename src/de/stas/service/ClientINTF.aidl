@@ -6,4 +6,6 @@ interface ClientINTF {
 	void error(String errMsg);
 	void progressAll(String current, int i);
 	void progressDetail(String speed, int i);
+	void done();
+	void started();
 }

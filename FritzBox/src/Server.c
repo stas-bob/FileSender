@@ -229,6 +229,7 @@ void *saveFiles(int clientdescriptor, char *usbPath, void *vPtr) {
 												int bytesRecv = recv(clientdescriptor, buffer, actualBufferSize, 0);
 												if (bytesRecv == 0 || bytesRecv == -1) {
 													printf("client connection broken\n");
+													fclose(pFile);
 													return vPtr;
 												}																	
 												fwrite(buffer, 1, bytesRecv, pFile);				

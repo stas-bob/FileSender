@@ -51,7 +51,11 @@ public class WidgetUpdateService extends IntentService implements ServiceConnect
 		try {
 			int sec = service.getTimeTillNextScan();
 			int min = (sec / 60)%60;
-			updateViews.setTextViewText(R.id.widget_textView, "Next scan in " + sec / 3600 + "h " + min + "m " + sec % 60 + "s");
+			if (sec == 0) {
+				updateViews.setTextViewText(R.id.widget_textView, "currently scanning");
+			} else {
+				updateViews.setTextViewText(R.id.widget_textView, "Next scan in " + sec / 3600 + "h " + min + "m " + sec % 60 + "s");
+			}
 			manager.updateAppWidget(thisWidget, updateViews);
 		} catch (Exception e) {
 			e.printStackTrace();

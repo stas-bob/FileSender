@@ -7,6 +7,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
@@ -14,10 +15,12 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -33,12 +36,27 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 	private TextView progressAllTextView;
 	private ProgressBar progressAll;
 	private ProgressBar progressDetail;
+	private Button cancelButton;
 	private Callback callback;
+	
+	@Override
+	public void onSaveInstanceState(Bundle b) {
+		b.putInt("progress_all", progressAll.getProgress());
+		b.putInt("progress_detail", progressDetail.getProgress());
+		super.onSaveInstanceState(b);
+	}
+	
+	@Override
+	public void onRestoreInstanceState(Bundle b) {
+		progressAll.setProgress(b.getInt("progress_all"));
+		progressDetail.setProgress(b.getInt("progress_detail"));
+	}
 	
 	@Override
 	public void onCreate(Bundle b) {
 		super.onCreate(b);
 		setContentView(R.layout.main);
+		cancelButton = (Button)findViewById(R.id.cancel_button);
 		progressAll = (ProgressBar)findViewById(R.id.progress_all);
 		progressAllTextView = (TextView)findViewById(R.id.progress_all_textView);
 		progressDetail = (ProgressBar)findViewById(R.id.progress_detail);
@@ -51,7 +69,7 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 		pathsListView.setOnItemClickListener(this);
 		try {
 			List<Path> paths = dbwrapper.getPaths();
-			List<String> msgs = new ArrayList<String>();
+			List<Message> msgs = new ArrayList<Message>();
 			pathsListView.setAdapter(new PathsArrayAdapter(this, R.id.path_textView, paths));
 			msgsListView.setAdapter(new MsgsArrayAdapter(this, R.id.msg_textView, msgs));
 		} catch (Exception e) {
@@ -61,6 +79,18 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 			showDialog(WARNING_DIALOG);
 			e.printStackTrace();
 		}
+		cancelButton.setOnClickListener(new OnClickListener() {
+			
+			@Override
+			public void onClick(View v) {
+				progressSpeedTextView.setText("canceling...");
+				try {
+					service.interrupt();
+				} catch (RemoteException e) {
+					e.printStackTrace();
+				}
+			}
+		});
 		callback = new Callback();
 	}
 	
@@ -99,16 +129,16 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 		}
 	}
 	
-	class MsgsArrayAdapter extends ArrayAdapter<String> {
+	class MsgsArrayAdapter extends ArrayAdapter<Message> {
 		private Context context;
-		public MsgsArrayAdapter(Context context, int id, List<String> objects) {
+		public MsgsArrayAdapter(Context context, int id, List<Message> objects) {
 			super(context, id, objects);
 			this.context = context;
 		}
 		
 		@Override
 		public View getView(int position, View convertView, ViewGroup parent) {
-			String msg = getItem(position);
+			Message msg = getItem(position);
 			ViewHolder holder = null;
 			if (convertView == null) {
 				convertView = ((LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE)).inflate(R.layout.msg_list, null);
@@ -117,7 +147,12 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 			}
 			holder = (ViewHolder) convertView.getTag();
 			TextView tv = holder.getMsg();
-			tv.setText(msg);
+			tv.setText(msg.getLine());
+			if (msg.isError()) {
+				tv.setTextColor(Color.RED);
+			} else {
+				tv.setTextColor(Color.WHITE);
+			}
 			return convertView;
 		}
 		private class ViewHolder {
@@ -245,6 +280,11 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 			public void run() {
 				while (service == null);
 				try {
+					if (service.isScanning()) {
+						showDetails();
+					} else {
+						hideDetails();
+					}
 					if(!service.register(getComponentName().getClassName(), callback)) {
 						throw new RuntimeException("could not bind service");
 					}
@@ -254,8 +294,12 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 							public void run() {
 								try {
 									int sec = service.getTimeTillNextScan();
-									int min = (sec / 60)%60;
-									timer.setText("Next scan in " + sec / 3600 + "h " + min + "m " + sec % 60 + "s");
+									if (sec == 0) {
+										timer.setText("scanning");
+									} else {
+										int min = (sec / 60)%60;
+										timer.setText("Next scan in " + sec / 3600 + "h " + min + "m " + sec % 60 + "s");
+									}
 								} catch (RemoteException e) {
 									inter();
 								}
@@ -350,7 +394,7 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 				runOnUiThread(new Runnable() {
 					@Override
 					public void run() {
-						((MsgsArrayAdapter)msgsListView.getAdapter()).add(line);
+						((MsgsArrayAdapter)msgsListView.getAdapter()).add(new Message(line, false));
 						changed();
 					}
 				});
@@ -368,6 +412,8 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 						warningDialog.setTitle("Error received");
 						warningDialog.setText(errMsg);
 						showDialog(WARNING_DIALOG);
+						((MsgsArrayAdapter)msgsListView.getAdapter()).add(new Message(errMsg, true));
+						changed();
 					}
 				});
 			} catch (Exception e) {
@@ -410,7 +456,51 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 			msgsListView.setSelection(((MsgsArrayAdapter)msgsListView.getAdapter()).getCount());
 		}
 
-		
+		@Override
+		public void done() throws RemoteException {
+			hideDetails();
+		}
+
+		@Override
+		public void started() throws RemoteException {
+			showDetails();
+		}
+	}
+	
+	public void showDetails() {
+		try {
+			runOnUiThread(new Runnable() {
+				@Override
+				public void run() {
+					cancelButton.setVisibility(View.VISIBLE);
+					((View)progressDetail.getParent()).setVisibility(View.VISIBLE);
+					progressAll.setVisibility(View.VISIBLE);
+					progressAllTextView.setVisibility(View.VISIBLE);
+				}
+			});
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void hideDetails() {
+		try {
+			runOnUiThread(new Runnable() {
+				@Override
+				public void run() {
+					cancelButton.setVisibility(View.GONE);
+					((View)progressDetail.getParent()).setVisibility(View.GONE);
+					progressAll.setVisibility(View.GONE);
+					progressAllTextView.setVisibility(View.GONE);
+					progressDetail.setProgress(0);
+					progressAll.setProgress(0);
+					progressAllTextView.setText("");
+					progressSpeedTextView.setText("");
+				}
+			});
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	
 }

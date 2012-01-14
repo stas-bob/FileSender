@@ -18,7 +18,7 @@
         android:layout_height="wrap_content"
         android:layout_width="wrap_content"
         android:text="@string/empty"
-        android:textColor="@color/red"
+        android:textColor="@color/cyan"
         android:layout_below="@id/path_text_textView"/>
     <TextView
        	android:id="@+id/cur_act_text_textView"
@@ -39,7 +39,7 @@
         android:layout_height="wrap_content"
         android:layout_width="wrap_content"
         android:text="@string/empty"
-        android:textColor="@color/red"
+        android:textColor="@color/cyan"
      	android:layout_alignParentRight="true"
 		android:layout_below="@id/cur_act_listView"/>
 	<TextView
@@ -56,21 +56,33 @@
 	    android:layout_marginTop="5dp"
         android:layout_height="wrap_content"
         android:layout_width="wrap_content"
-        android:layout_centerInParent="true"/>
+        android:layout_centerInParent="true"
+        android:visibility="gone"/>
+	<Button
+        android:layout_height="wrap_content"
+        android:layout_width="fill_parent"
+        android:id="@+id/cancel_button"
+        android:text="@string/cancel"
+        android:layout_toRightOf="@id/timer_textView"
+        android:layout_below="@id/progress_all_textView"
+        android:textSize="12dp"
+        android:visibility="gone"/>
 	<ProgressBar
 	    android:layout_above="@id/progress_all_textView"
 	    android:id="@+id/progress_all"
 	    android:layout_width="fill_parent"
 	    android:layout_height="wrap_content"
 	    style="@style/HorizontalBar"
-	    android:max="100"/>
+	    android:max="100"
+	    android:visibility="gone"/>
 	<LinearLayout
 	    android:id="@+id/progress_detail_layout"
 	    android:layout_above="@id/progress_all"
 	    android:layout_marginTop="10dp" 
 	    android:layout_width="fill_parent"
 	    android:layout_height="wrap_content"
-	    android:gravity="center">
+	    android:gravity="center"
+	    android:visibility="gone">
 		<ProgressBar
 		    android:id="@+id/progress_detail"
 		    android:layout_width="0px"

@@ -9,6 +9,14 @@ import de.stas.service.WidgetUpdateService;
 public class AppWidgetRecv extends AppWidgetProvider {
 	
 	@Override
+	public void onDisabled(Context c) {
+		Intent i = new Intent("de.stas.broadcast.AppWidgetRecv_ALARM");
+		PendingIntent pi = PendingIntent.getBroadcast(c, 0, i, PendingIntent.FLAG_UPDATE_CURRENT);
+		AlarmManager alarms = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
+		alarms.cancel(pi);
+	}
+	
+	@Override
 	public void onEnabled(Context c) {
 		Intent i = new Intent("de.stas.broadcast.AppWidgetRecv_ALARM");
 		PendingIntent pi = PendingIntent.getBroadcast(c, 0, i, PendingIntent.FLAG_UPDATE_CURRENT);

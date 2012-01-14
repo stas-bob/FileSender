@@ -17,12 +17,18 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.preference.PreferenceManager;
+import android.widget.RemoteViews;
+import de.stas.Main;
 import de.stas.R;
 import de.stas.ServerException;
 import de.stas.db.DBWrapper;
@@ -42,6 +48,11 @@ public class SendService extends Service {
 	private static final int INTEGER = 0;
 	private static final int GET_DISK_SPACE = 5;
 	private static final int SKIP = 14;
+	private RemoteViews notificationView;
+	private Notification notification;
+	private NotificationManager notificationManager;
+	private boolean interrupted;
+	private boolean scanning;
 
 	
 	@Override
@@ -55,8 +66,6 @@ public class SendService extends Service {
 		System.out.println("destroy");
 		System.exit(0);
 	}
-	
-
 	
 	public void sendErrorToClient(String msg) throws RemoteException {
 		Set<String> appNames = clients.keySet();
@@ -88,6 +97,18 @@ public class SendService extends Service {
 			clients.get(appName).progressDetail(speed, i);
 		}
 	}
+	public void sendCanceledToClient() throws RemoteException {
+		Set<String> appNames = clients.keySet();
+		for (String appName : appNames) {
+			clients.get(appName).done();
+		}
+	}
+	public void sendStartedToClient() throws RemoteException {
+		Set<String> appNames = clients.keySet();
+		for (String appName : appNames) {
+			clients.get(appName).started();
+		}
+	}
 	
 	public String readString(InputStream s) throws IOException {
 		String str = "";
@@ -111,6 +132,15 @@ public class SendService extends Service {
 		PreferenceManager.setDefaultValues(this, R.xml.settings, false);
 		clients = new HashMap<String, ClientINTF>();
 		dbWrapper = new DBWrapper(getApplicationContext());
+		
+		notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		notification = new Notification(R.drawable.ic_launcher, "FileSender", System.currentTimeMillis());
+		notificationView = new RemoteViews(getPackageName(), R.layout.progress_notification);
+		notification.contentView = notificationView;
+		Intent notificationIntent = new Intent(this, Main.class);
+		PendingIntent contentIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+		notification.contentIntent = contentIntent;
+
 		st = new SendThread();
 		st.start();
 	}
@@ -301,6 +331,16 @@ public class SendService extends Service {
 					}
 				}.start();
 			}
+
+			@Override
+			public void interrupt() throws RemoteException {
+				interrupted = true;
+			}
+
+			@Override
+			public boolean isScanning() throws RemoteException {
+				return scanning;
+			}
 		};
 	}
 
@@ -327,7 +367,6 @@ public class SendService extends Service {
 			secondsToWait = sec;
 		}
 		
-		
 		@Override
 		public void run() {
 			while (true) {
@@ -340,6 +379,8 @@ public class SendService extends Service {
 							wait(1000);
 						}
 					}
+					scanning = true;
+					sendStartedToClient();
 					sendNewMessagesToClient();
 					dbWrapper.removeDirtyFilePaths();
 					String address = getPrefs().getString("ip/dns", null);
@@ -360,6 +401,7 @@ public class SendService extends Service {
 						files = dbWrapper.filterNewFiles(files);
 			            sendSynced(s, getIntBytes(files.length), INTEGER);
 						for (File file : files) {
+							sendProgressAllToClient(path.getPath(), (int)(100*scanProgress/(double)files.length));
 							sendNewLineToClient("proceeding file " + file.getName());
 				           
 				            sendSynced(s, file.getName().getBytes(), STRING);
@@ -377,15 +419,27 @@ public class SendService extends Service {
 				            }
 				            dbWrapper.addNewFile(file, path);
 				            scanProgress++;
-				            sendProgressAllToClient(path.getPath(), 100*scanProgress/files.length);
+				            notificationView.setProgressBar(R.id.progress_all_notification_progressBar, 100,(int)(100*scanProgress/(double)files.length), false);
+				            notificationView.setTextViewText(R.id.title_notification_textView, "scanning: " + (int)(100*scanProgress/(double)files.length) + "%");
+				            notificationManager.notify(0, notification);
 						}
 					}
+					sendCanceledToClient();
+				} catch (InterruptedException ie) {
+					try {
+						sendCanceledToClient();
+						interrupted = false;
+					} catch (RemoteException e) {
+						e.printStackTrace();
+					}
+					ie.printStackTrace();
 				} catch (ServerException se) {
 					try {
 						sendErrorToClient(se.getMessage());
 					} catch (RemoteException e) {
 						e.printStackTrace();
 					}
+					se.printStackTrace();
 				} catch (Exception e) {
 					try {
 						if (e.getMessage() == null || e.getMessage().length() == 0) {
@@ -400,6 +454,7 @@ public class SendService extends Service {
 					}
 					e.printStackTrace();
 				} finally {
+					scanning = false;
 					try {
 						s.close();
 					} catch (IOException e) {
@@ -450,7 +505,7 @@ public class SendService extends Service {
 				}
 			}
 		};
-		private void sendData(Socket s, File file) throws NumberFormatException, Exception {
+		private void sendData(Socket s, File file) throws Exception {
 			FileInputStream fis = null;
 			OutputStream out = s.getOutputStream();
 			
@@ -462,6 +517,9 @@ public class SendService extends Service {
 				fis = new FileInputStream(file);
 				int received = 0;
 				while (bytesWritten < file.length()) {
+					if (interrupted) {
+						throw new InterruptedException();
+					}
 					int remainingBytesCount = (int)file.length() - bytesWritten;
 					int actualBufferSize = 0;					
 					if (remainingBytesCount <= bufferSize) {
