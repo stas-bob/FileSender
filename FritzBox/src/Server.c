@@ -20,7 +20,7 @@
 
 #define true 1
 #define false 0
-#define bufferSize 1024
+#define bufferSize 16024
 #define maxPathSize 100
 #define SAVE_FILES 1
 #define RM_FILES 2

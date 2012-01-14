@@ -408,16 +408,59 @@ public class SendService extends Service {
 				}
 			}
 		}
+		private class SpeedThread extends Thread {
+			private int fileLength;
+			private volatile int bytesRemotelyWritten;
+			
 
+			public SpeedThread(int length) {
+				this.fileLength = length;
+			}
+
+			public void setBytesRemotelyWritten(int bytesCount) {
+				bytesRemotelyWritten = bytesCount;
+			}
+			
+			@Override
+			public void run() {
+				int lastBytesRemotelyWritten = 0;
+				while (!isInterrupted()) {
+					synchronized (this) {
+						try {
+							wait(1000);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+							interrupt();
+						}
+					}
+					double diff = bytesRemotelyWritten - lastBytesRemotelyWritten;
+					diff /= 1024.0;
+					diff *= 1;
+					lastBytesRemotelyWritten = bytesRemotelyWritten;
+					boolean mb = false;
+					if (diff > 999) {
+						diff /= 1024.0;
+						mb = true;
+					}
+					try {
+						sendProgressDetailToClient(df.format(diff) + (mb ? " mb/s" : " kb/s"), (int)((100 * bytesRemotelyWritten) / (double)fileLength));
+					} catch (RemoteException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		};
 		private void sendData(Socket s, File file) throws NumberFormatException, Exception {
 			FileInputStream fis = null;
 			OutputStream out = s.getOutputStream();
 			
+			SpeedThread speedThread = new SpeedThread((int)file.length());
+			speedThread.start();
 			try {
-				int bufferSize = 1024;
+				int bufferSize = 16024;
 				int bytesWritten = 0;
 				fis = new FileInputStream(file);
-				int lastBytesRemotelyWritten = 0;
+				int received = 0;
 				while (bytesWritten < file.length()) {
 					int remainingBytesCount = (int)file.length() - bytesWritten;
 					int actualBufferSize = 0;					
@@ -429,32 +472,19 @@ public class SendService extends Service {
 					byte[] bytes = new byte[actualBufferSize];
 					fis.read(bytes);
 					out.write(bytes);
-					bytesWritten += actualBufferSize;			
-					try {
-						long start = System.currentTimeMillis();
-						int bytesRemotelyWritten = receiveInt(s);
-						long delayMS = System.currentTimeMillis() - start;
-						int currentRemotelyWrittenBytes = bytesRemotelyWritten - lastBytesRemotelyWritten;
-						boolean mb = false; 
-						if (delayMS == 0) delayMS = 1;
-						double speed = 1000*(currentRemotelyWrittenBytes / 1024)/(double)delayMS;
-						if (speed > 999) {
-							speed /= 1024;
-							mb = true;
-						}
-						sendProgressDetailToClient(df.format(speed) + (mb ? " mb/s" : " kb/s"), (int)((100 * bytesRemotelyWritten) / (double)file.length()));
-						lastBytesRemotelyWritten = bytesRemotelyWritten;
-					} catch (RemoteException e) {
-						e.printStackTrace();
-					}
+					bytesWritten += actualBufferSize;
+					received = receiveInt(s);
+					speedThread.setBytesRemotelyWritten(received);
+				}
+				while (received < file.length()) {
+					received = receiveInt(s);
+					speedThread.setBytesRemotelyWritten(received);
 				}
 			} finally {
+				speedThread.interrupt();
 				fis.close();
 			}
-			
 		}
-
-
 	}
 }
 
