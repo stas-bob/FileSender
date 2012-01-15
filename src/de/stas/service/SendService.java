@@ -5,9 +5,11 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.text.DecimalFormat;
@@ -97,7 +99,8 @@ public class SendService extends Service {
 			clients.get(appName).progressDetail(speed, i);
 		}
 	}
-	public void sendCanceledToClient() throws RemoteException {
+	
+	public void sendDoneToClient() throws RemoteException {
 		Set<String> appNames = clients.keySet();
 		for (String appName : appNames) {
 			clients.get(appName).done();
@@ -424,10 +427,9 @@ public class SendService extends Service {
 				            notificationManager.notify(0, notification);
 						}
 					}
-					sendCanceledToClient();
 				} catch (InterruptedException ie) {
 					try {
-						sendCanceledToClient();
+						sendDoneToClient();
 						interrupted = false;
 					} catch (RemoteException e) {
 						e.printStackTrace();
@@ -440,6 +442,20 @@ public class SendService extends Service {
 						e.printStackTrace();
 					}
 					se.printStackTrace();
+				} catch (ConnectException ce) {
+					ce.printStackTrace();
+					try {
+						sendErrorToClient(ce.getMessage());
+					} catch (RemoteException e) {
+						e.printStackTrace();
+					}
+				} catch (SocketException se) {
+					se.printStackTrace();
+					try {
+						sendErrorToClient(se.getMessage());
+					} catch (RemoteException e) {
+						e.printStackTrace();
+					}
 				} catch (Exception e) {
 					try {
 						if (e.getMessage() == null || e.getMessage().length() == 0) {
@@ -454,6 +470,11 @@ public class SendService extends Service {
 					}
 					e.printStackTrace();
 				} finally {
+					try {
+						sendDoneToClient();
+					} catch (RemoteException e1) {
+						e1.printStackTrace();
+					}
 					scanning = false;
 					try {
 						s.close();
