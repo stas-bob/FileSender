@@ -19,5 +19,4 @@ public abstract class Dialogs extends Dialog {
 	public void setText(String text) {
 		tv.setText(text);
 	}
-
 }

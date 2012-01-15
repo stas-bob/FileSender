@@ -1,6 +1,7 @@
 package de.stas;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import android.content.ComponentName;
@@ -43,6 +44,7 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 	public void onSaveInstanceState(Bundle b) {
 		b.putInt("progress_all", progressAll.getProgress());
 		b.putInt("progress_detail", progressDetail.getProgress());
+		b.putParcelableArrayList("msgs", ((MsgsArrayAdapter)msgsListView.getAdapter()).getMsgs());
 		super.onSaveInstanceState(b);
 	}
 	
@@ -50,6 +52,8 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 	public void onRestoreInstanceState(Bundle b) {
 		progressAll.setProgress(b.getInt("progress_all"));
 		progressDetail.setProgress(b.getInt("progress_detail"));
+		((MsgsArrayAdapter)msgsListView.getAdapter()).addAll((Collection<? extends Message>) b.getParcelableArrayList("msgs"));
+		msgsListView.setSelection(((MsgsArrayAdapter)msgsListView.getAdapter()).getCount());
 	}
 	
 	@Override
@@ -69,7 +73,7 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 		pathsListView.setOnItemClickListener(this);
 		try {
 			List<Path> paths = dbwrapper.getPaths();
-			List<Message> msgs = new ArrayList<Message>();
+			ArrayList<Message> msgs = new ArrayList<Message>();
 			pathsListView.setAdapter(new PathsArrayAdapter(this, R.id.path_textView, paths));
 			msgsListView.setAdapter(new MsgsArrayAdapter(this, R.id.msg_textView, msgs));
 		} catch (Exception e) {
@@ -131,9 +135,16 @@ public class Main extends BaseActivity implements ServiceConnection, OnItemClick
 	
 	class MsgsArrayAdapter extends ArrayAdapter<Message> {
 		private Context context;
-		public MsgsArrayAdapter(Context context, int id, List<Message> objects) {
+		private ArrayList<Message> msgs;
+		
+		public MsgsArrayAdapter(Context context, int id, ArrayList<Message> objects) {
 			super(context, id, objects);
 			this.context = context;
+			msgs = objects;
+		}
+		
+		public ArrayList<Message> getMsgs() {
+			return msgs;
 		}
 		
 		@Override
