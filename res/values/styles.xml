@@ -7,9 +7,5 @@
     </style>
     <style name="NotificationProgress" parent="android:Widget.DeviceDefault.ProgressBar.Horizontal" />
     <style name="NotificationTitle" parent="android:TextAppearance.StatusBar.EventContent.Title" />
-    <style name="DirectoryTitleBar" parent="android:Theme">
-    	<item name="android:windowTitleBackgroundStyle">@drawable/directory_titlebar_shape</item>
-    	<item name="android:windowTitleSize">50dp</item>
-	</style>
     
 </resources>

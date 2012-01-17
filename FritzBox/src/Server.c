@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <time.h>
+#include <sys/wait.h> 
 
 
 
@@ -326,6 +327,12 @@ void getDiskSpace(int cd, char *usbPath) {
 }
 
 
+void sigchld_handler(int s)
+{
+    while(waitpid(-1, NULL, WNOHANG) > 0) {
+	printf("child has returned %d\n", s);
+    }
+}
 
 int main(int argc, char **argv) {
     char *usbPath;
@@ -371,11 +378,21 @@ int main(int argc, char **argv) {
     {
         exit(EXIT_FAILURE);
     }
+    
+    struct sigaction sa;
+    sa.sa_handler = sigchld_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
+    if (sigaction(SIGCHLD, &sa, NULL) == -1) {
+        perror("sigaction");
+        exit(1);
+    }
 
     printf("gestartet\n");
 	
     void *vPtr = 0;
     do {
+	printf("accept()\n");
         clientdescriptor = accept(descriptor, (struct sockaddr *)&clientSocket, &clientLength);
         if (clientdescriptor == -1) {
            printf("accept() failed\n");
@@ -433,7 +450,6 @@ int main(int argc, char **argv) {
 	    	close(clientdescriptor);
 	    	exit(EXIT_SUCCESS);
             }
-
         }
     } while (true);
 
