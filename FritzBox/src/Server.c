@@ -327,10 +327,34 @@ void getDiskSpace(int cd, char *usbPath) {
 }
 
 
-void sigchld_handler(int s)
+/*
+ * The signal handler function -- only gets called when a SIGCHLD
+ * is received, ie when a child terminates
+ */
+void sig_chld(int signo) 
 {
-    while(waitpid(-1, NULL, WNOHANG) > 0) {
-	printf("child has returned %d\n", s);
+    int status, child_val;
+
+    /* Wait for any child without blocking */
+    if (waitpid(-1, &status, WNOHANG) < 0) 
+    {
+        /*
+         * calling standard I/O functions like fprintf() in a 
+         * signal handler is not recommended, but probably OK 
+         * in toy programs like this one.
+         */
+        fprintf(stderr, "waitpid failed\n");
+        return;
+    }
+
+    /*
+     * We now have the info in 'status' and can manipulate it using
+     * the macros in wait.h.
+     */
+    if (WIFEXITED(status))                /* did child exit normally? */
+    {
+        child_val = WEXITSTATUS(status); /* get child's exit status */
+        printf("signo: %d. Child's exited normally with status %d\n", signo, child_val);
     }
 }
 
@@ -379,13 +403,29 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
     
-    struct sigaction sa;
-    sa.sa_handler = sigchld_handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART;
-    if (sigaction(SIGCHLD, &sa, NULL) == -1) {
-        perror("sigaction");
-        exit(1);
+    struct sigaction act;
+
+    /* Assign sig_chld as our SIGCHLD handler */
+    act.sa_handler = sig_chld;
+
+    /* We don't want to block any other signals in this example */
+    sigemptyset(&act.sa_mask);
+
+    /*
+     * We're only interested in children that have terminated, not ones
+     * which have been stopped (eg user pressing control-Z at terminal)
+     */
+    act.sa_flags = SA_NOCLDSTOP | SA_RESTART;
+
+    /*
+     * Make these values effective. If we were writing a real 
+     * application, we would probably save the old value instead of 
+     * passing NULL.
+     */
+    if (sigaction(SIGCHLD, &act, NULL) < 0) 
+    {
+        fprintf(stderr, "sigaction failed\n");
+        return 1;
     }
 
     printf("gestartet\n");
