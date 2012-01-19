@@ -29,6 +29,7 @@ import android.content.SharedPreferences;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.preference.PreferenceManager;
+import android.util.TimeFormatException;
 import android.widget.RemoteViews;
 import de.stas.Main;
 import de.stas.R;
@@ -94,9 +95,11 @@ public class SendService extends Service {
 		}
 	}
 	public void sendProgressDetailToClient(String speed, int i) throws RemoteException {
-		Set<String> appNames = clients.keySet();
-		for (String appName : appNames) {
-			clients.get(appName).progressDetail(speed, i);
+		if (!interrupted) {
+			Set<String> appNames = clients.keySet();
+			for (String appName : appNames) {
+				clients.get(appName).progressDetail(speed, i);
+			}
 		}
 	}
 	
@@ -389,6 +392,7 @@ public class SendService extends Service {
 					String address = getPrefs().getString("ip/dns", null);
 					SocketAddress sa = createSA(address);
 					int timeout = Integer.parseInt(getPrefs().getString("timeout_list", null)) * 1000;
+					if (timeout == 0) throw new Exception("timeout == 0");
 					s.setSoTimeout(timeout);
 					s.connect(sa, timeout);
 					String password = getPrefs().getString("password", null);
@@ -430,14 +434,13 @@ public class SendService extends Service {
 				} catch (InterruptedException ie) {
 					try {
 						sendDoneToClient();
-						interrupted = false;
 					} catch (RemoteException e) {
 						e.printStackTrace();
 					}
 					ie.printStackTrace();
 				} catch (ServerException se) {
 					try {
-						sendErrorToClient(se.getMessage());
+						sendErrorToClient(se.getClass().getName().substring(se.getClass().getName().lastIndexOf('.') + 1));
 					} catch (RemoteException e) {
 						e.printStackTrace();
 					}
@@ -445,14 +448,14 @@ public class SendService extends Service {
 				} catch (ConnectException ce) {
 					ce.printStackTrace();
 					try {
-						sendErrorToClient(ce.getMessage());
+						sendErrorToClient(ce.getClass().getName().substring(ce.getClass().getName().lastIndexOf('.') + 1));
 					} catch (RemoteException e) {
 						e.printStackTrace();
 					}
 				} catch (SocketException se) {
 					se.printStackTrace();
 					try {
-						sendErrorToClient(se.getMessage());
+						sendErrorToClient(se.getClass().getName().substring(se.getClass().getName().lastIndexOf('.') + 1));
 					} catch (RemoteException e) {
 						e.printStackTrace();
 					}
@@ -462,10 +465,15 @@ public class SendService extends Service {
 							sendErrorToClient(e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1));
 							sendNotSynced(s, e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1).getBytes(), ERROR);
 						} else {
-							sendErrorToClient(e.getMessage());
-							sendNotSynced(s, e.getMessage().getBytes(), ERROR);
+							sendErrorToClient(e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1));
+							sendNotSynced(s, e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1).getBytes(), ERROR);
 						}
 					} catch (Exception e1) {
+						try {
+							sendErrorToClient(e1.getClass().getName().substring(e1.getClass().getName().lastIndexOf('.') + 1));
+						} catch (RemoteException e2) {
+							e2.printStackTrace();
+						}
 						e1.printStackTrace();
 					}
 					e.printStackTrace();
@@ -476,10 +484,16 @@ public class SendService extends Service {
 						e1.printStackTrace();
 					}
 					scanning = false;
+					interrupted = false;
 					try {
 						s.close();
 					} catch (IOException e) {
 						e.printStackTrace();
+						try {
+							sendErrorToClient(e.getClass().getName().substring(e.getClass().getName().lastIndexOf('.') + 1));
+						} catch (RemoteException e1) {
+							e1.printStackTrace();
+						}
 					}
 				}
 			}
@@ -487,56 +501,57 @@ public class SendService extends Service {
 		private class SpeedThread extends Thread {
 			private int fileLength;
 			private volatile int bytesRemotelyWritten;
+			private Socket s;
 			
 
-			public SpeedThread(int length) {
+			public SpeedThread(Socket s, int length) {
 				this.fileLength = length;
+				this.s = s;
 			}
 
-			public void setBytesRemotelyWritten(int bytesCount) {
-				bytesRemotelyWritten = bytesCount;
-			}
-			
 			@Override
 			public void run() {
 				int lastBytesRemotelyWritten = 0;
-				while (!isInterrupted()) {
-					synchronized (this) {
-						try {
-							wait(1000);
-						} catch (InterruptedException e) {
-							e.printStackTrace();
-							interrupt();
-						}
-					}
-					double diff = bytesRemotelyWritten - lastBytesRemotelyWritten;
-					diff /= 1024.0;
-					diff *= 1;
-					lastBytesRemotelyWritten = bytesRemotelyWritten;
-					boolean mb = false;
-					if (diff > 999) {
+				try {
+					while (bytesRemotelyWritten < fileLength && !isInterrupted() && !interrupted) {
+//						synchronized (this) {
+//							try {
+//								wait(1000);
+//							} catch (InterruptedException e) {
+//								e.printStackTrace();
+//								interrupt();
+//							}
+//						}
+						long start = System.currentTimeMillis();
+						bytesRemotelyWritten = receiveInt(s);
+						long timeDiff = System.currentTimeMillis() - start;
+						double diff = bytesRemotelyWritten - lastBytesRemotelyWritten;
 						diff /= 1024.0;
-						mb = true;
-					}
-					try {
+						diff = timeDiff == 0 ? diff * 1000 : 1000 * diff / timeDiff;
+						lastBytesRemotelyWritten = bytesRemotelyWritten;
+						boolean mb = false;
+						if (diff > 999) {
+							diff /= 1024.0;
+							mb = true;
+						}
 						sendProgressDetailToClient(df.format(diff) + (mb ? " mb/s" : " kb/s"), (int)((100 * bytesRemotelyWritten) / (double)fileLength));
-					} catch (RemoteException e) {
-						e.printStackTrace();
 					}
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
 			}
-		};
+		}
+		
 		private void sendData(Socket s, File file) throws Exception {
 			FileInputStream fis = null;
 			OutputStream out = s.getOutputStream();
 			
-			SpeedThread speedThread = new SpeedThread((int)file.length());
+			SpeedThread speedThread = new SpeedThread(s, (int)file.length());
 			speedThread.start();
 			try {
 				int bufferSize = 16024;
 				int bytesWritten = 0;
 				fis = new FileInputStream(file);
-				int received = 0;
 				while (bytesWritten < file.length()) {
 					if (interrupted) {
 						throw new InterruptedException();
@@ -552,13 +567,8 @@ public class SendService extends Service {
 					fis.read(bytes);
 					out.write(bytes);
 					bytesWritten += actualBufferSize;
-					received = receiveInt(s);
-					speedThread.setBytesRemotelyWritten(received);
 				}
-				while (received < file.length()) {
-					received = receiveInt(s);
-					speedThread.setBytesRemotelyWritten(received);
-				}
+				speedThread.join();
 			} finally {
 				speedThread.interrupt();
 				fis.close();

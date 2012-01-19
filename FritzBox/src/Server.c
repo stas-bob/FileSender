@@ -327,35 +327,22 @@ void getDiskSpace(int cd, char *usbPath) {
 }
 
 
-/*
- * The signal handler function -- only gets called when a SIGCHLD
- * is received, ie when a child terminates
- */
+
 void sig_chld(int signo) 
 {
     int status, child_val;
 
-    /* Wait for any child without blocking */
-    if (waitpid(-1, &status, WNOHANG) < 0) 
+
+    while (waitpid(-1, &status, WNOHANG) > 0) 
     {
-        /*
-         * calling standard I/O functions like fprintf() in a 
-         * signal handler is not recommended, but probably OK 
-         * in toy programs like this one.
-         */
-        fprintf(stderr, "waitpid failed\n");
-        return;
+	    if (WIFEXITED(status))                /* did child exit normally? */
+	    {
+		child_val = WEXITSTATUS(status); /* get child's exit status */
+		printf("signo: %d. Child's exited normally with status %d\n", signo, child_val);
+	    }
     }
 
-    /*
-     * We now have the info in 'status' and can manipulate it using
-     * the macros in wait.h.
-     */
-    if (WIFEXITED(status))                /* did child exit normally? */
-    {
-        child_val = WEXITSTATUS(status); /* get child's exit status */
-        printf("signo: %d. Child's exited normally with status %d\n", signo, child_val);
-    }
+
 }
 
 int main(int argc, char **argv) {
@@ -417,13 +404,8 @@ int main(int argc, char **argv) {
      */
     act.sa_flags = SA_NOCLDSTOP | SA_RESTART;
 
-    /*
-     * Make these values effective. If we were writing a real 
-     * application, we would probably save the old value instead of 
-     * passing NULL.
-     */
-    if (sigaction(SIGCHLD, &act, NULL) < 0) 
-    {
+
+    if (sigaction(SIGCHLD, &act, NULL) < 0) {
         fprintf(stderr, "sigaction failed\n");
         return 1;
     }
